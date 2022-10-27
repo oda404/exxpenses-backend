@@ -8,8 +8,8 @@ import { USERNAME_LENGTH } from "./types";
 @Entity({ name: "users" })
 export class User {
     @Field(type => ID)
-    @PrimaryGeneratedColumn()
-    id: number;
+    @PrimaryGeneratedColumn("uuid")
+    id: string;
 
     @Field({ description: "The user's name" })
     @Column({ length: USERNAME_LENGTH })

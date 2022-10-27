@@ -8,8 +8,8 @@ import { Field, ObjectType, ID } from "type-graphql";
 @Entity({ name: "expenses" })
 export class Expense {
     @Field(() => ID)
-    @PrimaryGeneratedColumn()
-    id: number;
+    @PrimaryGeneratedColumn("uuid")
+    id: string;
 
     @Field({ description: "This expenses' description", nullable: true })
     @Column({ length: EXPENSE_DESCRIPTION_LENGTH, nullable: true })

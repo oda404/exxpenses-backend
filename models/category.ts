@@ -9,8 +9,8 @@ import { Field, ObjectType, ID } from "type-graphql";
 @Entity({ name: "categories" })
 export class Category {
     @Field(() => ID)
-    @PrimaryGeneratedColumn()
-    id: number;
+    @PrimaryGeneratedColumn("uuid")
+    id: string;
 
     @Field({ description: "The category's name" })
     @Column({ length: CATEGORY_NAME_LENGTH })

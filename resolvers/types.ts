@@ -5,7 +5,7 @@ import { Session } from "express-session";
 import { Request, Response } from "express";
 
 export type ResolverContext = {
-    req: Request & { session: Session & { userId?: number } };
+    req: Request & { session: Session & { userId?: string } };
     res: Response;
 };
 

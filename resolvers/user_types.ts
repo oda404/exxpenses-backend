@@ -1,14 +1,10 @@
 
-import {Matches, MaxLength, MinLength} from "class-validator";
-import {USERNAME_LENGTH} from "../models/types";
-import {Field, InputType, ObjectType} from "type-graphql";
-import {User} from "../models/user";
-import {GenericFieldError} from "./types";
-
-const emailRegex = /^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
+import { Field, InputType, ObjectType } from "type-graphql";
+import { User } from "../models/user";
+import { GenericFieldError } from "./types";
 
 @InputType()
-export class RegisterUserInput implements Partial<User>
+export class UserRegisterInput implements Partial<User>
 {
     @Field()
     name: string;
@@ -20,10 +16,19 @@ export class RegisterUserInput implements Partial<User>
     password: string;
 }
 
+@InputType()
+export class UserLoginInput implements Partial<User>
+{
+    @Field()
+    email: string;
+
+    @Field()
+    password: string;
+};
+
 /* */
 @ObjectType()
-export class UserResponse
-{
+export class UserResponse {
     @Field(() => User, { nullable: true })
     user?: User;
 

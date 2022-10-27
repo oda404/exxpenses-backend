@@ -1,13 +1,12 @@
 
-import {Entity, Column, PrimaryGeneratedColumn, ManyToOne, CreateDateColumn} from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, CreateDateColumn } from "typeorm";
 import { Category } from "./category";
-import {CURRENCY_LENGTH, EXPENSE_DESCRIPTION_LENGTH} from "./types";
-import {Field, ObjectType, ID} from "type-graphql";
+import { CURRENCY_LENGTH, EXPENSE_DESCRIPTION_LENGTH } from "./types";
+import { Field, ObjectType, ID } from "type-graphql";
 
-@ObjectType({description: "The expesne model"})
-@Entity()
-export class Expense
-{
+@ObjectType({ description: "The expesne model" })
+@Entity({ name: "expenses" })
+export class Expense {
     @Field(() => ID)
     @PrimaryGeneratedColumn()
     id: number;

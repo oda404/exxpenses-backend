@@ -5,7 +5,7 @@ import { ObjectType, Field, ID } from "type-graphql";
 import { USERNAME_LENGTH } from "./types";
 
 @ObjectType({ description: "The user model" })
-@Entity()
+@Entity({ name: "users" })
 export class User {
     @Field(type => ID)
     @PrimaryGeneratedColumn()

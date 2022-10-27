@@ -29,5 +29,5 @@ export class User {
 
     @Field(type => [Category])
     @OneToMany(() => Category, (category) => category.user)
-
+    categories: Category[];
 }

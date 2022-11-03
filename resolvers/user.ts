@@ -34,11 +34,11 @@ function psqlErrorToResponse(e: any): UserResponse {
 }
 
 function isNameValid(name: string): boolean {
-    return name.length < USERNAME_LENGTH;
+    return name.length > 0 && name.length < USERNAME_LENGTH;
 }
 
 function isPasswordValid(pass: string): boolean {
-    return pass.length >= 8;
+    return pass.length > 0 && pass.length >= 8;
 }
 
 function isEmailValid(email: string): boolean {
@@ -105,11 +105,34 @@ export class UserResolver {
         return { user: user };
     }
 
-    @Query()
-    placeholder(
+    @Mutation(() => Boolean)
+    async userLogout(
         @Ctx() { req }: ResolverContext
-    ): string {
-        console.log(req.session.userId);
-        return "";
+    ): Promise<boolean> {
+
+        if (req.session.userId === undefined)
+            return false;
+
+        /* FIXME: somehow wait for destroy to finish before returning. */
+        req.session.destroy(() => { });
+        return true;
+    }
+
+    @Query(() => UserResponse, { description: "Get the currently logged in user." })
+    async userGet(
+        @Ctx() { req }: ResolverContext
+    ): Promise<UserResponse> {
+
+        const id: string | undefined = req.session.userId;
+        if (id === undefined)
+            return { error: { name: "Not signed in" } };
+
+        const user = await userRepo.findOneBy({ id: id });
+        if (user === null) {
+            req.session.destroy(() => { });
+            return { error: { name: "Internal server error" } };
+        }
+
+        return { user: user };
     }
 }

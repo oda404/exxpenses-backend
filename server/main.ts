@@ -7,9 +7,12 @@ import { UserResolver } from "../resolvers/user";
 import { createServer as createHttpServer } from "http";
 import { exxpensesDataSource } from "./data_source";
 import { customFormatError } from "./error_format";
-import session = require("express-session");
 import { ResolverContext } from "../resolvers/types";
 import cors = require("cors");
+import session from "express-session";
+import connectRedis from "connect-redis";
+const RedisStore = connectRedis(session);
+import Redis from "ioredis";
 
 async function new_apollo_server() {
     return new ApolloServer({
@@ -20,6 +23,22 @@ async function new_apollo_server() {
         }),
         context: ({ req, res }): ResolverContext => ({ req, res }),
         formatError: customFormatError,
+    });
+}
+
+async function new_redis_store() {
+    let redisClient = new Redis({
+        host: "192.168.2.69",
+        port: 6379,
+        password: "penismare",
+        lazyConnect: true
+    });
+
+    await redisClient.connect();
+
+    return new RedisStore({
+        client: redisClient,
+        disableTouch: true
     });
 }
 
@@ -35,6 +54,7 @@ async function new_http_server() {
     /* Cookies middleware */
     app.use(session({
         name: "user_session",
+        store: await new_redis_store(),
         cookie: {
             path: "/",
             httpOnly: true,

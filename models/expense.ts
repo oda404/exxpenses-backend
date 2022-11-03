@@ -4,7 +4,16 @@ import { Category } from "./category";
 import { CURRENCY_LENGTH, EXPENSE_DESCRIPTION_LENGTH } from "./types";
 import { Field, ObjectType, ID } from "type-graphql";
 
-@ObjectType({ description: "The expesne model" })
+class ColumnNumericTransformer {
+    to(data: number): number {
+        return data;
+    }
+    from(data: string): number {
+        return parseFloat(data);
+    }
+}
+
+@ObjectType({ description: "The expense model" })
 @Entity({ name: "expenses" })
 export class Expense {
     @Field(() => ID)
@@ -16,7 +25,7 @@ export class Expense {
     description?: string;
 
     @Field({ description: "This expenses' price" })
-    @Column({ type: "decimal", precision: 2 })
+    @Column({ type: "numeric", precision: 12, scale: 2, transformer: new ColumnNumericTransformer() })
     price: number;
 
     @Field({ description: "This expenses' prefered currency" })
@@ -29,6 +38,6 @@ export class Expense {
     date: Date;
 
     /* This expenses' category */
-    @ManyToOne(() => Category, (category) => category.expenses)
+    @ManyToOne(() => Category, (category) => category.expenses, { onDelete: "CASCADE" })
     category: Category;
 }

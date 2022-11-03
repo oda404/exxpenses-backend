@@ -4,6 +4,7 @@ import express from "express";
 import { ApolloServer } from "apollo-server-express";
 import { buildSchema } from "type-graphql";
 import { UserResolver } from "../resolvers/user";
+import { CategoryResolver } from "../resolvers/category";
 import { createServer as createHttpServer } from "http";
 import { exxpensesDataSource } from "./data_source";
 import { customFormatError } from "./error_format";
@@ -18,8 +19,9 @@ async function new_apollo_server() {
     return new ApolloServer({
         schema: await buildSchema({
             resolvers: [
-                UserResolver
-            ]
+                UserResolver,
+                CategoryResolver,
+            ],
         }),
         context: ({ req, res }): ResolverContext => ({ req, res }),
         formatError: customFormatError,

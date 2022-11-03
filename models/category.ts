@@ -1,5 +1,5 @@
 
-import { Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToOne } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToOne, Unique } from "typeorm";
 import { Expense } from "./expense";
 import { User } from "./user";
 import { CATEGORY_NAME_LENGTH, CURRENCY_LENGTH } from "./types";
@@ -7,6 +7,8 @@ import { Field, ObjectType, ID } from "type-graphql";
 
 @ObjectType({ description: "The category model" })
 @Entity({ name: "categories" })
+/* The name and the user together are unique: i.e. one user can only have uniquely named categories */
+@Unique(["name", "user"])
 export class Category {
     @Field(() => ID)
     @PrimaryGeneratedColumn("uuid")
@@ -20,12 +22,10 @@ export class Category {
     @Column({ length: CURRENCY_LENGTH })
     default_currency: string;
 
-    // The owner of this category
-    @ManyToOne(() => User, (user) => user.categories)
+    // The owner of this category. When the user is deleted all of their categories are also deleted.
+    @ManyToOne(() => User, (user) => user.categories, { onDelete: "CASCADE" })
     user: User;
 
-    @Field(type => [Expense])
-    // The expenses in this category
     @OneToMany(() => Expense, (expense) => expense.category)
     expenses: Expense[]
 }

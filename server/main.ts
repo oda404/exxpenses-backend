@@ -5,6 +5,7 @@ import { ApolloServer } from "apollo-server-express";
 import { buildSchema } from "type-graphql";
 import { UserResolver } from "../resolvers/user";
 import { CategoryResolver } from "../resolvers/category";
+import { ExpenseResolver } from "../resolvers/expense";
 import { createServer as createHttpServer } from "http";
 import { exxpensesDataSource } from "./data_source";
 import { customFormatError } from "./error_format";
@@ -21,6 +22,7 @@ async function new_apollo_server() {
             resolvers: [
                 UserResolver,
                 CategoryResolver,
+                ExpenseResolver
             ],
         }),
         context: ({ req, res }): ResolverContext => ({ req, res }),

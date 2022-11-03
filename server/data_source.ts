@@ -1,8 +1,8 @@
 
-import {DataSource} from "typeorm";
-import {User} from "../models/user";
-import {Category} from "../models/category";
-import {Expense} from "../models/expense";
+import { DataSource } from "typeorm";
+import { User } from "../models/user";
+import { Category } from "../models/category";
+import { Expense } from "../models/expense";
 
 export const exxpensesDataSource = new DataSource({
     type: "postgres",
@@ -18,7 +18,10 @@ export const exxpensesDataSource = new DataSource({
     synchronize: true,
     logging: true,
 
-    entities: [ User, Category, Expense ]
+    entities: [User, Category, Expense]
 });
 
 export const userRepo = exxpensesDataSource.getRepository(User);
+export const categoryRepo = exxpensesDataSource.getRepository(Category);
+export const expenseRepo = exxpensesDataSource.getRepository(Expense);
+

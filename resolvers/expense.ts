@@ -5,7 +5,7 @@ import { Category } from "../models/category";
 import { Expense } from "../models/expense";
 import { CURRENCY_LENGTH, EXPENSE_DESCRIPTION_LENGTH } from "../models/types";
 import { expenseRepo } from "../server/data_source";
-import { ExpenseAddInput, ExpenseDeleteInput, ExpenseEditInput, ExpenseResponse, ExpensesCostResponse, ExpensesGetInput } from "./expense_types";
+import { ExpenseAddInput, ExpenseDeleteInput, ExpenseEditInput, ExpenseResponse, ExpensesCostResponse, ExpensesCostResponseMultiple, ExpensesGetInput, ExpensesGetInputMultiple, ExpenseTotalCostMultiple } from "./expense_types";
 import { ResolverContext } from "./types";
 
 /* Return an UserResponse based on the Postgres exception we are given. */
@@ -257,6 +257,77 @@ export class ExpenseResolver {
                     let y = new Decimal(expense.price);
                     res.costs![idx].price = x.add(y).toNumber();
                 }
+            })
+
+            return res;
+        });
+    }
+
+    @Query(() => ExpensesCostResponseMultiple)
+    async expensesTotalCostGetMultiple(
+        @Ctx() { req }: ResolverContext,
+        @Arg("expenseGetData") { category_names, since, until }: ExpensesGetInputMultiple
+    ): Promise<ExpensesCostResponseMultiple> {
+
+        if (req.session.userId === undefined)
+            return { error: { name: "Not singed in" } };
+
+        if (category_names.length === 0)
+            return { error: { name: "At least one category name is required!" } };
+
+        if (since !== undefined && until !== undefined) {
+            if (since.getTime() >= until.getTime())
+                return { error: { name: "Since can't be bigger than until" } };
+        }
+
+        return expenseRepo.manager.transaction(async (transManager) => {
+            const transCategoryRepo = transManager.getRepository(Category);
+            const transExpenseRepo = transManager.getRepository(Expense);
+
+            let res: ExpensesCostResponseMultiple = {
+                costs: category_names.map(c => {
+                    return {
+                        category_name: c,
+                        total: []
+                    };
+                })
+            };
+
+            /* FIXME: parallelize this loop */
+            for (let i = 0; i < category_names.length; ++i) {
+                const c = category_names[i];
+                // MAYBE TODO: does frontend really need to know if there is no category with this name ?
+                // FIXME: somehow get all expenses needed in one query ?
+                const category = await transCategoryRepo.findOne({
+                    where: { name: c, user: { id: req.session.userId } },
+                    relations: ["expenses"],
+                });
+
+                if (category === null)
+                    return { error: { name: "Category doesn't exist, try creating it first", field: "category_name" } };
+
+                let expenses = await getExpensesWithDate(since, until, category, transExpenseRepo);
+
+                /* We know catIdx will be found since we just added it above */
+                let catIdx = res.costs?.findIndex(o => o.category_name === c)!;
+
+                expenses.forEach((expense) => {
+                    let idx = res.costs![catIdx].total.findIndex(e => e.currency === expense.currency);
+
+                    if (idx === -1) {
+                        res.costs![catIdx].total.push({ price: expense.price, currency: expense.currency });
+                    }
+                    else {
+                        // MAYBE FIXME: stop creaing new instances every itteration :)
+                        let x = new Decimal(res.costs![catIdx].total[idx].price);
+                        let y = new Decimal(expense.price);
+                        res.costs![catIdx].total[idx].price = x.add(y).toNumber();
+                    }
+                })
+            }
+
+            res.costs?.forEach(c => {
+                console.log(c.total)
             })
 
             return res;

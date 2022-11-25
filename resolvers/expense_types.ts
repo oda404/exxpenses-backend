@@ -34,6 +34,18 @@ export class ExpensesGetInput {
 }
 
 @InputType()
+export class ExpensesGetInputMultiple {
+    @Field(() => [String])
+    category_names: string[];
+
+    @Field({ nullable: true })
+    since?: Date;
+
+    @Field({ nullable: true })
+    until?: Date;
+}
+
+@InputType()
 export class ExpenseDeleteInput {
     @Field()
     expense_id: string;
@@ -82,6 +94,24 @@ export class ExpenseTotalCost {
 export class ExpensesCostResponse {
     @Field(() => [ExpenseTotalCost], { nullable: true })
     costs?: ExpenseTotalCost[];
+
+    @Field(() => GenericFieldError, { nullable: true })
+    error?: GenericFieldError;
+}
+
+@ObjectType()
+export class ExpenseTotalCostMultiple {
+    @Field(() => String)
+    category_name: string;
+
+    @Field(() => [ExpenseTotalCost])
+    total: ExpenseTotalCost[];
+}
+
+@ObjectType()
+export class ExpensesCostResponseMultiple {
+    @Field(() => [ExpenseTotalCostMultiple], { nullable: true })
+    costs?: ExpenseTotalCostMultiple[];
 
     @Field(() => GenericFieldError, { nullable: true })
     error?: GenericFieldError;

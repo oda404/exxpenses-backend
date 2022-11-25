@@ -107,7 +107,7 @@ export class UserResolver {
 
     @Mutation(() => Boolean)
     async userLogout(
-        @Ctx() { req }: ResolverContext
+        @Ctx() { req, res }: ResolverContext
     ): Promise<boolean> {
 
         if (req.session.userId === undefined)
@@ -115,6 +115,8 @@ export class UserResolver {
 
         /* FIXME: somehow wait for destroy to finish before returning. */
         req.session.destroy(() => { });
+        res.clearCookie("user_session");
+
         return true;
     }
 

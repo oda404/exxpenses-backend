@@ -26,7 +26,8 @@ const redis_host = process.env.REDIS_HOST!;
 const redis_port = process.env.REDIS_PORT!;
 const redis_pass = process.env.REDIS_PASS!;
 
-const session_secret = process.env.SESSION_SECRET!;
+const session_domain = process.env.SESSION_DOMAIN;
+const session_secret_path = process.env.SESSION_SECRET_PATH!;
 
 const https_key_path = process.env.HTTPS_KEY_PATH!;
 const https_cert_path = process.env.HTTPS_CERT_PATH!;
@@ -80,8 +81,9 @@ async function new_http_server() {
             secure: env === "prod",
             maxAge: 1000 * 60 * 60 * 24 * 4, // 4 days
             sameSite: "lax",
+            domain: session_domain
         },
-        secret: session_secret,
+        secret: readFileSync(session_secret_path).toString(),
         resave: false,
         saveUninitialized: false,
     }));

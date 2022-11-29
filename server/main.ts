@@ -28,7 +28,7 @@ const redis_port = process.env.REDIS_PORT!;
 const redis_pass = process.env.REDIS_PASS!;
 
 const session_domain = process.env.SESSION_DOMAIN;
-const session_secret_path = process.env.SESSION_SECRET_PATH!;
+const session_secret = process.env.SESSION_SECRET!;
 
 const https_key_path = process.env.HTTPS_KEY_PATH!;
 const https_cert_path = process.env.HTTPS_CERT_PATH!;
@@ -75,8 +75,6 @@ async function new_redis_store() {
 
 async function new_http_server() {
 
-    const session_secret = readFileSync(session_secret_path).toString();
-
     console.log(`session: domain: ${session_domain}`);
     console.log(`session: secret length: ${session_secret.length}`);
 
@@ -106,7 +104,7 @@ async function new_http_server() {
             sameSite: "lax",
             domain: session_domain
         },
-        secret: readFileSync(session_secret_path).toString(),
+        secret: session_secret,
         resave: false,
         saveUninitialized: false,
     }));

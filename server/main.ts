@@ -21,7 +21,9 @@ import { exit } from "process";
 import { ApolloServerPluginLandingPageDisabled } from "apollo-server-core";
 
 const env = process.env.ENV!;
-const port = process.env.PORT!;
+
+const server_bind_address = process.env.SERVER_BIND_ADDRESS!;
+const server_bind_port = process.env.SERVER_BIND_PORT!;
 const frontend_url = process.env.FRONTEND_URL!;
 
 const redis_host = process.env.REDIS_HOST!;
@@ -148,7 +150,6 @@ async function new_http_server() {
 async function main() {
 
     console.log(`server: Environment is ${env}`);
-    console.log(`server: Server is set to start on ${port}`);
     console.log(`server: Serving frontend ${frontend_url}`);
 
     console.log(`psql: Connecting to ${psql_host}:${psql_port}`);
@@ -160,9 +161,9 @@ async function main() {
 
     const server = await new_http_server();
 
-    const port_number = Number(port);
-    server.listen(port_number, () => {
-        console.log(`server started on ${port_number}`);
+    const port_number = Number(server_bind_port);
+    server.listen(port_number, server_bind_address, () => {
+        console.log(`server: Listening on ${server_bind_address}:${port_number}`);
     });
 }
 

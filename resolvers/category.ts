@@ -91,7 +91,7 @@ export class CategoryResolver {
 
     @Query(() => CategoryResposne)
     async categoriesGet(
-        @Ctx() { req }: ResolverContext,
+        @Ctx() { req, res }: ResolverContext,
     ): Promise<CategoryResposne> {
 
         if (req.session.userId === undefined)
@@ -105,6 +105,7 @@ export class CategoryResolver {
 
         if (user === null) {
             req.session.destroy(() => { });
+            res.clearCookie("user_session");
             return { error: { name: "Internal server error" } };
         }
 

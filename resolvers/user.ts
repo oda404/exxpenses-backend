@@ -122,16 +122,17 @@ export class UserResolver {
 
     @Query(() => UserResponse, { description: "Get the currently logged in user." })
     async userGet(
-        @Ctx() { req }: ResolverContext
+        @Ctx() { req, res }: ResolverContext
     ): Promise<UserResponse> {
 
-        const id: string | undefined = req.session.userId;
+        const id = req.session.userId;
         if (id === undefined)
             return { error: { name: "Not signed in" } };
 
         const user = await userRepo.findOneBy({ id: id });
         if (user === null) {
             req.session.destroy(() => { });
+            res.clearCookie("user_session");
             return { error: { name: "Internal server error" } };
         }
 

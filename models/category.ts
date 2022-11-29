@@ -1,5 +1,5 @@
 
-import { Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToOne, Unique } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToOne, Unique, CreateDateColumn, UpdateDateColumn } from "typeorm";
 import { Expense } from "./expense";
 import { User } from "./user";
 import { CATEGORY_NAME_LENGTH, CURRENCY_LENGTH } from "./types";
@@ -21,6 +21,10 @@ export class Category {
     @Field({ description: "The category's default curreny" })
     @Column({ length: CURRENCY_LENGTH })
     default_currency: string;
+
+    @Field({ description: "Last update for this category" })
+    @UpdateDateColumn({ type: "timestamptz" })
+    last_update: Date;
 
     // The owner of this category. When the user is deleted all of their categories are also deleted.
     @ManyToOne(() => User, (user) => user.categories, { onDelete: "CASCADE" })

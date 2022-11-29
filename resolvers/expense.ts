@@ -326,10 +326,6 @@ export class ExpenseResolver {
                 })
             }
 
-            res.costs?.forEach(c => {
-                console.log(c.total)
-            })
-
             return res;
         });
     }

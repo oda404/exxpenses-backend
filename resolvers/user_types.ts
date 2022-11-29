@@ -7,7 +7,10 @@ import { GenericFieldError } from "./types";
 export class UserRegisterInput implements Partial<User>
 {
     @Field()
-    name: string;
+    firstname: string;
+
+    @Field()
+    lastname: string;
 
     @Field()
     email: string;

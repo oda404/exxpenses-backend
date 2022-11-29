@@ -56,11 +56,14 @@ export class UserResolver {
 
     @Mutation(() => UserResponse, { description: "Register a new user." })
     async userRegister(
-        @Arg("registerUserData") { name, email, password }: UserRegisterInput
+        @Arg("registerUserData") { firstname, lastname, email, password }: UserRegisterInput
     ): Promise<UserResponse> {
 
-        if (!isNameValid(name))
-            return { error: { name: "Name can't be longer than 30 characters!", field: "name" } };
+        if (!isNameValid(firstname))
+            return { error: { name: "Firstname can't be longer than 30 characters!", field: "firstname" } };
+
+        if (!isNameValid(lastname))
+            return { error: { name: "Lastname can't be longer than 30 characters!", field: "lastname" } };
 
         if (!isEmailValid(email))
             return { error: { name: "Invalid email address!", field: "email" } };
@@ -69,7 +72,8 @@ export class UserResolver {
             return { error: { name: "Password can't be shorter than 8 characters!", field: "password" } };
 
         const partuser: Partial<User> = {
-            name: name,
+            firstname: firstname,
+            lastname: lastname,
             email: email,
             hash: await argon2_hash(password),
         };

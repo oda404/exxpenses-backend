@@ -11,9 +11,13 @@ export class User {
     @PrimaryGeneratedColumn("uuid")
     id: string;
 
-    @Field({ description: "The user's name" })
+    @Field({ description: "The user's firstname" })
     @Column({ length: USERNAME_LENGTH })
-    name: string;
+    firstname: string;
+
+    @Field({ description: "The user's lastname" })
+    @Column({ length: USERNAME_LENGTH })
+    lastname: string;
 
     @Field({ description: "The user's email" })
     @Column({ unique: true })

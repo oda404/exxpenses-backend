@@ -2,7 +2,7 @@
 import { Entity, Column, PrimaryGeneratedColumn, OneToMany, CreateDateColumn } from "typeorm";
 import { Category } from "./category";
 import { ObjectType, Field, ID } from "type-graphql";
-import { USERNAME_LENGTH } from "./types";
+import { CURRENCY_LENGTH, USERNAME_LENGTH } from "./types";
 
 @ObjectType({ description: "The user model" })
 @Entity({ name: "users" })
@@ -19,10 +19,21 @@ export class User {
     @Column({ unique: true })
     email: string;
 
+    @Field({ description: "True if the user has verified their email address" })
+    @Column({ default: false })
+    verified_email: boolean;
+
+    @Field({ description: "The user's phone number" })
+    @Column({ nullable: true, default: null })
+    phone_number: string;
+
+    @Field({ description: "The user's preferred currency" })
+    @Column({ length: CURRENCY_LENGTH, nullable: true })
+    preferred_currency: string;
+
     @Column()
     hash: string;
 
-    /* When this user signed up */
     @Field(type => Date)
     @CreateDateColumn({ type: "timestamptz" })
     signup_date: Date;

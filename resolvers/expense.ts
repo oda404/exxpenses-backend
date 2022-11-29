@@ -37,25 +37,25 @@ async function getExpensesWithDate(since: Date | undefined, until: Date | undefi
     if (since !== undefined && until !== undefined) {
         /* Get expenses that happened in a given time frame */
         expenses = await repo.find({
-            where: { category: category, date: Between(since, until) }
+            where: { category: { id: category.id }, date: Between(since, until) }
         });
     }
     else if (since !== undefined) {
         /* Get expenses that happened after a given date */
         expenses = await repo.find({
-            where: { category: category, date: MoreThan(since) }
+            where: { category: { id: category.id }, date: MoreThan(since) }
         });
     }
     else if (until !== undefined) {
         /* Get expenses that happened before a given date*/
         expenses = await repo.find({
-            where: { category: category, date: LessThan(until) }
+            where: { category: { id: category.id }, date: LessThan(until) }
         });
     }
     else {
         /* Get all expenses for this category */
         expenses = await repo.find({
-            where: { category: category }
+            where: { category: { id: category.id } }
         });
     }
 

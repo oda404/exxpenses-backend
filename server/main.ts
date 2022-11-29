@@ -18,6 +18,7 @@ const RedisStore = connectRedis(session);
 import Redis from "ioredis";
 import { readFileSync } from "fs";
 import { exit } from "process";
+import { ApolloServerPluginLandingPageDisabled } from "apollo-server-core";
 
 const env = process.env.ENV!;
 const port = process.env.PORT!;
@@ -40,6 +41,11 @@ const psql_username = process.env.PSQL_USERNAME!;
 const psql_pass = process.env.PSQL_PASS!;
 
 async function new_apollo_server() {
+
+    let plugins = [];
+    if (env === "prod")
+        plugins.push(ApolloServerPluginLandingPageDisabled())
+
     return new ApolloServer({
         schema: await buildSchema({
             resolvers: [
@@ -48,6 +54,7 @@ async function new_apollo_server() {
                 ExpenseResolver
             ],
         }),
+        plugins: plugins,
         context: ({ req, res }): ResolverContext => ({ req, res }),
         formatError: customFormatError,
         persistedQueries: false

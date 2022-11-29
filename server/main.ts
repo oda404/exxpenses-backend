@@ -50,6 +50,7 @@ async function new_apollo_server() {
         }),
         context: ({ req, res }): ResolverContext => ({ req, res }),
         formatError: customFormatError,
+        persistedQueries: false
     });
 }
 

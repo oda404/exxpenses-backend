@@ -124,6 +124,28 @@ export class UserResolver {
         return true;
     }
 
+    @Mutation(() => Boolean)
+    async userUpdatePreferredCurrency(
+        @Ctx() { req, res }: ResolverContext,
+        @Arg("preferred_currency") preferred_currency: string
+    ) {
+        if (req.session.userId === undefined)
+            return false;
+
+        // TODO: currency validation
+
+        const resp = await userRepo.update({ id: req.session.userId }, { preferred_currency: preferred_currency });
+
+        if (resp.affected === 0) {
+            // No user
+            req.session.destroy(() => { })
+            res.clearCookie("user_session");
+            return false;
+        }
+
+        return true;
+    }
+
     @Query(() => UserResponse, { description: "Get the currently logged in user." })
     async userGet(
         @Ctx() { req, res }: ResolverContext

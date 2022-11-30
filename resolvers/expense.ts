@@ -142,7 +142,7 @@ export class ExpenseResolver {
             if (category === null)
                 return { error: { name: "Category doesn't exist, try creating it first" } };
 
-            const expense = await transExpenseRepo.findOneBy({ id: expense_id, category: category });
+            const expense = await transExpenseRepo.findOneBy({ id: expense_id, category: { id: category.id } });
             if (expense === null) {
                 return { error: { name: "Expense doesn't exist", field: expense_id } };
             }
@@ -177,7 +177,7 @@ export class ExpenseResolver {
             if (categ === null)
                 return false;
 
-            const res = await transExpenseRepo.delete({ id: expense_id, category: categ });
+            const res = await transExpenseRepo.delete({ id: expense_id, category: { id: categ.id } });
             return res.affected === 1;
         })
     }

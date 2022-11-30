@@ -31,7 +31,7 @@ export class User {
     @Column({ nullable: true, default: null })
     phone_number: string;
 
-    @Field({ description: "The user's preferred currency" })
+    @Field({ description: "The user's preferred currency", nullable: true })
     @Column({ length: CURRENCY_LENGTH, nullable: true })
     preferred_currency: string;
 

@@ -34,6 +34,12 @@ import { ResolverContext } from "./types";
 async function getExpensesWithDate(since: Date | undefined, until: Date | undefined, category: Category, repo: Repository<Expense>) {
     let expenses: Expense[] = [];
 
+    if(since)
+            since.setDate(since.getDate() - 1);
+
+    if(until)
+            until.setDate(until.getDate() + 1);
+
     if (since !== undefined && until !== undefined) {
         /* Get expenses that happened in a given time frame */
         expenses = await repo.find({

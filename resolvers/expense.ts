@@ -300,7 +300,6 @@ export class ExpenseResolver {
                 // FIXME: somehow get all expenses needed in one query ?
                 const category = await transCategoryRepo.findOne({
                     where: { name: c, user: { id: req.session.userId } },
-                    relations: ["expenses"],
                 });
 
                 if (category === null)

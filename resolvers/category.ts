@@ -111,4 +111,25 @@ export class CategoryResolver {
 
         return { categories: user.categories };
     }
+
+    @Query(() => CategoryResposne)
+    async categoryGet(
+        @Ctx() { req, res }: ResolverContext,
+        @Arg("categoryName") name: string
+    ): Promise<CategoryResposne> {
+
+        if (req.session.userId === undefined)
+            return { error: { name: "Not logged in" } };
+
+        const category = await categoryRepo.findOne({
+            where: { name: name, user: { id: req.session.userId } }
+        });
+
+        if (!category)
+            return { error: { name: "No such category", field: "categoryName" } }
+
+        return {
+            categories: [category]
+        }
+    }
 };

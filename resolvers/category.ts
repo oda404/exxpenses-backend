@@ -4,7 +4,7 @@ import { Category } from "../models/category";
 import { CATEGORY_NAME_LENGTH } from "../models/types";
 import { User } from "../models/user";
 import { categoryRepo, userRepo } from "../server/data_source";
-import { CategoryAddInput, CategoryResposne } from "./category_types";
+import { CategoryAddInput, CategoryEditInput, CategoryResposne } from "./category_types";
 import { ResolverContext } from "./types";
 
 /* Return an UserResponse based on the Postgres exception we are given. */
@@ -87,6 +87,36 @@ export class CategoryResolver {
 
         const res = await categoryRepo.delete({ name: name, user: { id: req.session.userId } });
         return res.affected === 1;
+    }
+
+    @Mutation(() => Boolean)
+    async categoryEdit(
+        @Ctx() { req }: ResolverContext,
+        @Arg("categoryEditData") category: CategoryEditInput
+    ) {
+        if (req.session.userId === undefined)
+            return { error: { name: "Not singed in" } };
+
+        if (category.name.length > CATEGORY_NAME_LENGTH)
+            return { error: { name: `Name can't be longer than ${CATEGORY_NAME_LENGTH} characters`, field: "name" } };
+
+        if (category.name.length === 0)
+            return { error: { name: "Name can't be empty", field: "name" } };
+
+        // TODO validate default_currency
+
+        let result: any;
+        try {
+            result = await categoryRepo.update(
+                { id: category.id, user: { id: req.session.userId } },
+                { name: category.name, default_currency: category.default_currency }
+            );
+        }
+        catch (e) {
+            return false;
+        }
+
+        return result.affected === 1;
     }
 
     @Query(() => CategoryResposne)

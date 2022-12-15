@@ -12,6 +12,19 @@ export class CategoryAddInput implements Partial<Category>
     default_currency: string;
 }
 
+@InputType()
+export class CategoryEditInput implements Partial<Category> {
+
+    @Field()
+    id: string;
+
+    @Field()
+    name: string;
+
+    @Field()
+    default_currency: string;
+}
+
 @ObjectType()
 export class CategoryResposne {
     @Field(() => [Category], { nullable: true })

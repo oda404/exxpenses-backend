@@ -34,28 +34,31 @@ import { ResolverContext } from "./types";
 async function getExpensesWithDate(since: Date | undefined, until: Date | undefined, category: Category, repo: Repository<Expense>) {
     let expenses: Expense[] = [];
 
-    if(since)
-            since.setDate(since.getDate() - 1);
+    const dSince = since ? new Date(since) : undefined;
+    const dUntil = until ? new Date(until) : undefined;
 
-    if(until)
-            until.setDate(until.getDate() + 1);
+    if (dSince)
+        dSince.setDate(dSince.getDate() - 1);
 
-    if (since !== undefined && until !== undefined) {
+    if (dUntil)
+        dUntil.setDate(dUntil.getDate() + 1);
+
+    if (dSince !== undefined && dUntil !== undefined) {
         /* Get expenses that happened in a given time frame */
         expenses = await repo.find({
-            where: { category: { id: category.id }, date: Between(since, until) }
+            where: { category: { id: category.id }, date: Between(dSince, dUntil) }
         });
     }
-    else if (since !== undefined) {
+    else if (dSince !== undefined) {
         /* Get expenses that happened after a given date */
         expenses = await repo.find({
-            where: { category: { id: category.id }, date: MoreThan(since) }
+            where: { category: { id: category.id }, date: MoreThan(dSince) }
         });
     }
-    else if (until !== undefined) {
+    else if (dUntil !== undefined) {
         /* Get expenses that happened before a given date*/
         expenses = await repo.find({
-            where: { category: { id: category.id }, date: LessThan(until) }
+            where: { category: { id: category.id }, date: LessThan(dUntil) }
         });
     }
     else {

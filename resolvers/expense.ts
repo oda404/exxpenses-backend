@@ -1,6 +1,6 @@
 import Decimal from "decimal.js";
 import { Arg, Ctx, Mutation, Query, Resolver } from "type-graphql";
-import { Between, LessThan, MoreThan, Repository } from "typeorm";
+import { Between, LessThan, LessThanOrEqual, MoreThan, MoreThanOrEqual, Repository } from "typeorm";
 import { Category } from "../models/category";
 import { Expense } from "../models/expense";
 import { CURRENCY_LENGTH, EXPENSE_DESCRIPTION_LENGTH } from "../models/types";
@@ -37,12 +37,6 @@ async function getExpensesWithDate(since: Date | undefined, until: Date | undefi
     const dSince = since ? new Date(since) : undefined;
     const dUntil = until ? new Date(until) : undefined;
 
-    if (dSince)
-        dSince.setDate(dSince.getDate() - 1);
-
-    if (dUntil)
-        dUntil.setDate(dUntil.getDate() + 1);
-
     if (dSince !== undefined && dUntil !== undefined) {
         /* Get expenses that happened in a given time frame */
         expenses = await repo.find({
@@ -52,13 +46,13 @@ async function getExpensesWithDate(since: Date | undefined, until: Date | undefi
     else if (dSince !== undefined) {
         /* Get expenses that happened after a given date */
         expenses = await repo.find({
-            where: { category: { id: category.id }, date: MoreThan(dSince) }
+            where: { category: { id: category.id }, date: MoreThanOrEqual(dSince) }
         });
     }
     else if (dUntil !== undefined) {
         /* Get expenses that happened before a given date*/
         expenses = await repo.find({
-            where: { category: { id: category.id }, date: LessThan(dUntil) }
+            where: { category: { id: category.id }, date: LessThanOrEqual(dUntil) }
         });
     }
     else {

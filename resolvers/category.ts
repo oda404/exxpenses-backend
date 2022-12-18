@@ -42,6 +42,9 @@ export class CategoryResolver {
         if (req.session.userId === undefined)
             return { error: { name: "Not singed in" } };
 
+        name = name.trim();
+        default_currency = default_currency.trim();
+
         if (name.length > CATEGORY_NAME_LENGTH)
             return { error: { name: `Name can't be longer than ${CATEGORY_NAME_LENGTH} characters`, field: "name" } };
 
@@ -96,6 +99,9 @@ export class CategoryResolver {
     ) {
         if (req.session.userId === undefined)
             return { error: { name: "Not singed in" } };
+
+        category.name = category.name.trim();
+        category.default_currency = category.default_currency.trim();
 
         if (category.name.length > CATEGORY_NAME_LENGTH)
             return { error: { name: `Name can't be longer than ${CATEGORY_NAME_LENGTH} characters`, field: "name" } };

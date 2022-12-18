@@ -77,6 +77,9 @@ export class ExpenseResolver {
         if (req.session.userId === undefined)
             return { error: { name: "Not singed in" } };
 
+        description = description?.trim();
+        currency = currency.trim();
+
         if (price <= 0)
             return { error: { name: "Invalid price", field: "price" } };
 
@@ -135,6 +138,8 @@ export class ExpenseResolver {
         /* TODO: further validate currency */
         if (currency.length > CURRENCY_LENGTH)
             return { error: { name: `Currency's name can't be longer than ${CURRENCY_LENGTH} characters`, field: "currency" } }
+
+        currency = currency.trim();
 
         // Execute all of this shit in a transaction to avoid any race conditions
         return expenseRepo.manager.transaction(async (transManager) => {

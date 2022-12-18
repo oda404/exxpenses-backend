@@ -59,6 +59,11 @@ export class UserResolver {
         @Arg("registerUserData") { firstname, lastname, email, password }: UserRegisterInput
     ): Promise<UserResponse> {
 
+        /* Trim strings */
+        firstname = firstname.trim();
+        lastname = lastname.trim();
+        email = email.trim();
+
         if (!isNameValid(firstname))
             return { error: { name: "Firstname can't be longer than 30 characters!", field: "firstname" } };
 
@@ -67,6 +72,9 @@ export class UserResolver {
 
         if (!isEmailValid(email))
             return { error: { name: "Invalid email address!", field: "email" } };
+
+        if (password.includes(' '))
+            return { error: { name: "Password contains invalid characters!", field: "password" } }
 
         if (!isPasswordValid(password))
             return { error: { name: "Password can't be shorter than 8 characters!", field: "password" } };
@@ -91,6 +99,8 @@ export class UserResolver {
         @Ctx() { req }: ResolverContext,
         @Arg("loginUserData") { email, password }: UserLoginInput
     ): Promise<UserResponse> {
+
+        email = email.trim();
 
         const genericError = { error: { name: "Incorrect email or password!" } };
 
@@ -131,6 +141,8 @@ export class UserResolver {
     ) {
         if (req.session.userId === undefined)
             return false;
+
+        preferred_currency = preferred_currency.trim();
 
         // TODO: currency validation
 

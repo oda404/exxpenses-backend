@@ -21,6 +21,7 @@ import { exit } from "process";
 import { ApolloServerPluginLandingPageDisabled } from "apollo-server-core";
 import { Server as HTTPServer } from "http";
 import { Server as HTTPSServer } from "https";
+import { noReplyMailer } from "./mailer";
 
 const env = process.env.ENV!;
 
@@ -171,6 +172,7 @@ async function main() {
     process.on("SIGINT", () => {
         server.close(async () => {
             await exxpensesDataSource.destroy();
+            noReplyMailer.close();
             exit(1);
         })
     })

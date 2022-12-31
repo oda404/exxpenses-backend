@@ -38,7 +38,7 @@ function isNameValid(name: string): boolean {
 }
 
 function isPasswordValid(pass: string): boolean {
-    return pass.length > 0 && pass.length >= 8;
+    return pass.length >= 8;
 }
 
 function isEmailValid(email: string): boolean {

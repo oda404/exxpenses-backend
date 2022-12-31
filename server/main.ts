@@ -19,6 +19,8 @@ import Redis from "ioredis";
 import { readFileSync } from "fs";
 import { exit } from "process";
 import { ApolloServerPluginLandingPageDisabled } from "apollo-server-core";
+import { Server as HTTPServer } from "http";
+import { Server as HTTPSServer } from "https";
 
 const env = process.env.ENV!;
 
@@ -126,7 +128,7 @@ async function new_http_server() {
     /* Add apollo as a middleware to express */
     apollo_middleware.applyMiddleware({ app, cors: false, path: "/" });
 
-    let server: any;
+    let server: HTTPServer | HTTPSServer;
 
     if (env === "prod") {
         console.log(`https: Reading ssl certificate from ${https_cert_path}`);
@@ -165,6 +167,13 @@ async function main() {
     server.listen(port_number, server_bind_address, () => {
         console.log(`server: Listening on ${server_bind_address}:${port_number}`);
     });
+
+    process.on("SIGINT", () => {
+        server.close(async () => {
+            await exxpensesDataSource.destroy();
+            exit(1);
+        })
+    })
 }
 
 main();

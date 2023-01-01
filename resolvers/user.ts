@@ -9,6 +9,9 @@ import { USERNAME_LENGTH } from "../models/types";
 import { ResolverContext } from "./types";
 import { noReplyMailer } from "../server/mailer";
 import Container from "typedi";
+import generateEmailVerificationToken, { getEmailForVerificationTokenAndDelete } from "../utils/generateEmailVerificationToken";
+
+const frontend_url = process.env.FRONTEND_URL!;
 
 /* Return an UserResponse based on the Postgres exception we are given. */
 function psqlErrorToResponse(e: any): UserResponse {
@@ -154,6 +157,66 @@ export class UserResolver {
             // No user
             req.session.destroy(() => { })
             res.clearCookie("user_session");
+            return false;
+        }
+
+        return true;
+    }
+
+    @Mutation(() => Boolean)
+    async userSendVerificationEmail(
+        @Ctx() { req, res }: ResolverContext
+    ) {
+        if (req.session.userId === undefined)
+            return false;
+
+        return this.userRepo.manager.transaction(async (transManager) => {
+            const transUserRepo = transManager.getRepository(User);
+
+            const user = await transUserRepo.findOneBy({ id: req.session.userId });
+            if (!user) {
+                req.session.destroy(() => { })
+                res.clearCookie("user_session");
+                return false;
+            }
+
+            if (user.verified_email) {
+                return false;
+            }
+
+            const token = await generateEmailVerificationToken(user.email);
+
+            const emailres = await noReplyMailer.sendMail({
+                from: "Exxpenses <no-reply@exxpenses.com>",
+                to: user.email,
+                subject: "Verify your Exxpenses account",
+                text: "Click on this button to confirm your Exxpenses account!",
+                html: `
+                    <div>
+                        <a href="${frontend_url}/verify/${token}">Click to verify your Exxpenses account.</a>
+                    </div>
+                `
+            })
+
+            return true;
+        })
+    }
+
+    @Mutation(() => Boolean)
+    async userVerifyEmail(
+        @Arg("token") token: string
+    ) {
+        const email = await getEmailForVerificationTokenAndDelete(token);
+        if (!email)
+            return false;
+
+        try {
+            await this.userRepo.update(
+                { email: email, verified_email: false },
+                { verified_email: true }
+            );
+        }
+        catch (e) {
             return false;
         }
 

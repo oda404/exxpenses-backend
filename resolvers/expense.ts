@@ -1,10 +1,10 @@
 import Decimal from "decimal.js";
 import { Arg, Ctx, Mutation, Query, Resolver } from "type-graphql";
-import { Between, LessThan, LessThanOrEqual, MoreThan, MoreThanOrEqual, Repository } from "typeorm";
+import Container from "typedi";
+import { Between, LessThanOrEqual, MoreThanOrEqual, Repository } from "typeorm";
 import { Category } from "../models/category";
 import { Expense } from "../models/expense";
 import { CURRENCY_LENGTH, EXPENSE_DESCRIPTION_LENGTH } from "../models/types";
-import { expenseRepo } from "../server/data_source";
 import { ExpenseAddInput, ExpenseDeleteInput, ExpenseEditInput, ExpenseResponse, ExpensesCostResponse, ExpensesCostResponseMultiple, ExpensesGetInput, ExpensesGetInputMultiple, ExpenseTotalCostMultiple } from "./expense_types";
 import { ResolverContext } from "./types";
 
@@ -68,6 +68,8 @@ async function getExpensesWithDate(since: Date | undefined, until: Date | undefi
 @Resolver(Expense)
 export class ExpenseResolver {
 
+    private readonly expenseRepo = Container.get<Repository<Expense>>("psqlExpenseRepo");
+
     @Mutation(() => ExpenseResponse)
     async expenseAdd(
         @Ctx() { req }: ResolverContext,
@@ -93,7 +95,7 @@ export class ExpenseResolver {
             return { error: { name: `Currency's name can't be longer than ${CURRENCY_LENGTH} characters`, field: "currency" } }
 
         // Execute all of this shit in a transaction to avoid any race conditions
-        return expenseRepo.manager.transaction(async (transManager) => {
+        return this.expenseRepo.manager.transaction(async (transManager) => {
             const transCategoryRepo = transManager.getRepository(Category);
             const transExpenseRepo = transManager.getRepository(Expense);
 
@@ -142,7 +144,7 @@ export class ExpenseResolver {
         currency = currency.trim();
 
         // Execute all of this shit in a transaction to avoid any race conditions
-        return expenseRepo.manager.transaction(async (transManager) => {
+        return this.expenseRepo.manager.transaction(async (transManager) => {
             const transCategoryRepo = transManager.getRepository(Category);
             const transExpenseRepo = transManager.getRepository(Expense);
 
@@ -174,7 +176,7 @@ export class ExpenseResolver {
             return false;
 
         /* Execute everything inside of a transaction to avoid race conditions */
-        return expenseRepo.manager.transaction(async (transManager) => {
+        return this.expenseRepo.manager.transaction(async (transManager) => {
             const transCategoryRepo = transManager.getRepository(Category);
             const transExpenseRepo = transManager.getRepository(Expense);
 
@@ -204,7 +206,7 @@ export class ExpenseResolver {
                 return { error: { name: "Since can't be bigger than until" } };
         }
 
-        return expenseRepo.manager.transaction(async (transManager) => {
+        return this.expenseRepo.manager.transaction(async (transManager) => {
             const transCategoryRepo = transManager.getRepository(Category);
             const transExpenseRepo = transManager.getRepository(Expense);
 
@@ -235,7 +237,7 @@ export class ExpenseResolver {
                 return { error: { name: "Since can't be bigger than until" } };
         }
 
-        return expenseRepo.manager.transaction(async (transManager) => {
+        return this.expenseRepo.manager.transaction(async (transManager) => {
             const transCategoryRepo = transManager.getRepository(Category);
             const transExpenseRepo = transManager.getRepository(Expense);
 
@@ -288,7 +290,7 @@ export class ExpenseResolver {
                 return { error: { name: "Since can't be bigger than until" } };
         }
 
-        return expenseRepo.manager.transaction(async (transManager) => {
+        return this.expenseRepo.manager.transaction(async (transManager) => {
             const transCategoryRepo = transManager.getRepository(Category);
             const transExpenseRepo = transManager.getRepository(Expense);
 

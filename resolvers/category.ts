@@ -1,9 +1,9 @@
 import { Arg, Ctx, Mutation, Query, Resolver } from "type-graphql";
-import { QueryFailedError } from "typeorm";
+import Container from "typedi";
+import { QueryFailedError, Repository } from "typeorm";
 import { Category } from "../models/category";
 import { CATEGORY_NAME_LENGTH } from "../models/types";
 import { User } from "../models/user";
-import { categoryRepo, userRepo } from "../server/data_source";
 import { CategoryAddInput, CategoryEditInput, CategoryResposne } from "./category_types";
 import { ResolverContext } from "./types";
 
@@ -33,6 +33,9 @@ function psqlErrorToResponse(e: any): CategoryResposne {
 @Resolver(Category)
 export class CategoryResolver {
 
+    private readonly userRepo = Container.get<Repository<User>>("psqlUserRepo");
+    private readonly categoryRepo = Container.get<Repository<Category>>("psqlCategoryRepo");
+
     @Mutation(() => CategoryResposne)
     async categoryAdd(
         @Ctx() { req }: ResolverContext,
@@ -53,7 +56,7 @@ export class CategoryResolver {
 
         // TODO validate default_currency
 
-        return categoryRepo.manager.transaction(async (transManager) => {
+        return this.categoryRepo.manager.transaction(async (transManager) => {
             const transUserRepo = transManager.getRepository(User);
             const transCategoryRepo = transManager.getRepository(Category);
 
@@ -88,7 +91,7 @@ export class CategoryResolver {
         if (req.session.userId === undefined)
             return false;
 
-        const res = await categoryRepo.delete({ name: name, user: { id: req.session.userId } });
+        const res = await this.categoryRepo.delete({ name: name, user: { id: req.session.userId } });
         return res.affected === 1;
     }
 
@@ -113,7 +116,7 @@ export class CategoryResolver {
 
         let result: any;
         try {
-            result = await categoryRepo.update(
+            result = await this.categoryRepo.update(
                 { id: category.id, user: { id: req.session.userId } },
                 { name: category.name, default_currency: category.default_currency }
             );
@@ -134,7 +137,7 @@ export class CategoryResolver {
             return { error: { name: "Not logged in" } };
 
         // TODO: Add indexing so we dont fetch all the categories
-        const user = await userRepo.findOne({
+        const user = await this.userRepo.findOne({
             where: { id: req.session.userId },
             relations: ["categories"]
         });
@@ -157,7 +160,7 @@ export class CategoryResolver {
         if (req.session.userId === undefined)
             return { error: { name: "Not logged in" } };
 
-        const category = await categoryRepo.findOne({
+        const category = await this.categoryRepo.findOne({
             where: { name: name, user: { id: req.session.userId } }
         });
 

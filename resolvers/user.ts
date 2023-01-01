@@ -1,14 +1,14 @@
 
 import { User } from "../models/user";
 import { Resolver, Arg, Query, Mutation, Ctx } from "type-graphql";
-import { userRepo } from "../server/data_source";
-
 // TODO: maybe switch to libsodium
 import { hash as argon2_hash, verify as argon2_verify } from "argon2"
 import { UserLoginInput, UserRegisterInput, UserResponse } from "./user_types";
-import { QueryFailedError } from "typeorm";
+import { QueryFailedError, Repository } from "typeorm";
 import { USERNAME_LENGTH } from "../models/types";
 import { ResolverContext } from "./types";
+import { noReplyMailer } from "../server/mailer";
+import Container from "typedi";
 
 /* Return an UserResponse based on the Postgres exception we are given. */
 function psqlErrorToResponse(e: any): UserResponse {
@@ -54,6 +54,8 @@ function isEmailValid(email: string): boolean {
 @Resolver(User)
 export class UserResolver {
 
+    private readonly userRepo = Container.get<Repository<User>>("psqlUserRepo");
+
     @Mutation(() => UserResponse, { description: "Register a new user." })
     async userRegister(
         @Arg("registerUserData") { firstname, lastname, email, password }: UserRegisterInput
@@ -87,7 +89,7 @@ export class UserResolver {
         };
 
         try {
-            return { user: await userRepo.save(partuser) };
+            return { user: await this.userRepo.save(partuser) };
         }
         catch (e) {
             return psqlErrorToResponse(e);
@@ -107,7 +109,7 @@ export class UserResolver {
         if (!isEmailValid(email) || !isPasswordValid(password))
             return genericError;
 
-        const user = await userRepo.findOneBy({ email: email });
+        const user = await this.userRepo.findOneBy({ email: email });
         if (user === null)
             return genericError;
 
@@ -146,7 +148,7 @@ export class UserResolver {
 
         // TODO: currency validation
 
-        const resp = await userRepo.update({ id: req.session.userId }, { preferred_currency: preferred_currency });
+        const resp = await this.userRepo.update({ id: req.session.userId }, { preferred_currency: preferred_currency });
 
         if (resp.affected === 0) {
             // No user
@@ -167,7 +169,7 @@ export class UserResolver {
         if (id === undefined)
             return { error: { name: "Not signed in" } };
 
-        const user = await userRepo.findOneBy({ id: id });
+        const user = await this.userRepo.findOneBy({ id: id });
         if (user === null) {
             req.session.destroy(() => { });
             res.clearCookie("user_session");

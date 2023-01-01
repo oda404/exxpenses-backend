@@ -8,7 +8,7 @@ import { CategoryResolver } from "../resolvers/category";
 import { ExpenseResolver } from "../resolvers/expense";
 import { createServer as createHttpServer } from "http";
 import { createServer as createHttpsServer } from "https";
-import { exxpensesDataSource } from "./data_source";
+import { closePSQLConnection, initPSQLConnection } from "./psql";
 import { customFormatError } from "./error_format";
 import { ResolverContext } from "../resolvers/types";
 import cors = require("cors");
@@ -22,6 +22,8 @@ import { ApolloServerPluginLandingPageDisabled } from "apollo-server-core";
 import { Server as HTTPServer } from "http";
 import { Server as HTTPSServer } from "https";
 import { noReplyMailer } from "./mailer";
+import { closeRedisConnection, initRedisConnection } from "./redis";
+import { Container } from "typedi";
 
 const env = process.env.ENV!;
 
@@ -29,21 +31,11 @@ const server_bind_address = process.env.SERVER_BIND_ADDRESS!;
 const server_bind_port = process.env.SERVER_BIND_PORT!;
 const frontend_url = process.env.FRONTEND_URL!;
 
-const redis_host = process.env.REDIS_HOST!;
-const redis_port = process.env.REDIS_PORT!;
-const redis_pass = process.env.REDIS_PASS!;
-
 const session_domain = process.env.SESSION_DOMAIN;
 const session_secret = process.env.SESSION_SECRET!;
 
 const https_key_path = process.env.HTTPS_KEY_PATH!;
 const https_cert_path = process.env.HTTPS_CERT_PATH!;
-
-const psql_host = process.env.PSQL_HOST!;
-const psql_port = process.env.PSQL_PORT!;
-const psql_db = process.env.PSQL_DB!;
-const psql_username = process.env.PSQL_USERNAME!;
-const psql_pass = process.env.PSQL_PASS!;
 
 async function new_apollo_server() {
 
@@ -67,22 +59,8 @@ async function new_apollo_server() {
 }
 
 async function new_redis_store() {
-
-    const redis_pass_len = redis_pass.length;
-    console.log(`redis: Connecting to ${redis_host}:${redis_port}`);
-    console.log(`redis: Password length: ${redis_pass_len}, ending in "${redis_pass.substring(redis_pass_len - 3)}"`);
-
-    let redisClient = new Redis({
-        host: redis_host,
-        port: Number(redis_port),
-        password: redis_pass,
-        lazyConnect: true
-    });
-
-    await redisClient.connect();
-
     return new RedisStore({
-        client: redisClient,
+        client: Container.get<Redis>("redisClient"),
     });
 }
 
@@ -155,12 +133,11 @@ async function main() {
     console.log(`server: Environment is ${env}`);
     console.log(`server: Serving frontend ${frontend_url}`);
 
-    console.log(`psql: Connecting to ${psql_host}:${psql_port}`);
-    console.log(`psql: Connecting to database ${psql_db} as ${psql_username}`);
-    console.log(`psql: Password length: ${psql_pass.length}, ending in "${psql_pass.substring(psql_pass.length - 3)}"`);
-
     /* Initialize the connection to Postgresql */
-    await exxpensesDataSource.initialize();
+    await initPSQLConnection();
+
+    /* Initialize connection to Redis server */
+    await initRedisConnection();
 
     const server = await new_http_server();
 
@@ -171,7 +148,8 @@ async function main() {
 
     process.on("SIGINT", () => {
         server.close(async () => {
-            await exxpensesDataSource.destroy();
+            await closePSQLConnection();
+            await closeRedisConnection();
             noReplyMailer.close();
             exit(1);
         })

@@ -1,8 +1,8 @@
 
 import nodemailer from "nodemailer";
 
-const noreply_mail_user = process.env.NOREPLY_MAIN_USER;
-const noreply_mail_pass = process.env.NOREPLY_MAIN_PASS;
+const noreply_mail_user = process.env.NOREPLY_MAIL_USER;
+const noreply_mail_pass = process.env.NOREPLY_MAIL_PASS;
 
 export const noReplyMailer = nodemailer.createTransport({
     service: "gmail",

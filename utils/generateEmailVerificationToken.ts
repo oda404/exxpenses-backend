@@ -2,8 +2,7 @@
 import Redis from "ioredis";
 import Container from "typedi";
 import { v4 as uuidv4 } from "uuid";
-
-const uuidRegex = /^[0-9A-F]{8}-[0-9A-F]{4}-[4][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i;
+import uuidRegex from "./uuidRegex";
 
 /* Generates and saves into redis a new email verification token for this specified email */
 export default async function generateEmailVerificationToken(email: string) {

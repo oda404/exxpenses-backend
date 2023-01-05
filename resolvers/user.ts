@@ -10,6 +10,7 @@ import { ResolverContext } from "./types";
 import { noReplyMailer } from "../server/mailer";
 import Container from "typedi";
 import generateEmailVerificationToken, { getEmailForVerificationTokenAndDelete } from "../utils/generateEmailVerificationToken";
+import { generatePasswordRecoveryToken, getPasswordRecoveryEmail, getPasswordRecoveryEmailNoDelete } from "../utils/passwordRecovery";
 
 const frontend_url = process.env.FRONTEND_URL!;
 
@@ -223,6 +224,63 @@ export class UserResolver {
         return true;
     }
 
+    @Mutation(() => Boolean)
+    async userRecoverPassword(
+        @Arg("email") email: string
+    ) {
+        /* This function always returns true */
+
+        return this.userRepo.manager.transaction(async (transManager) => {
+            const transUserRepo = transManager.getRepository(User);
+
+            const user = await transUserRepo.findOneBy({ email: email });
+            if (!user)
+                return true;
+
+            const token = await generatePasswordRecoveryToken(email);
+
+            noReplyMailer.sendMail({
+                from: "Exxpenses <no-reply@exxpenses.com>",
+                to: user.email,
+                subject: "Password reset request",
+                text: "Follow this link to create a new Exxpenses password",
+                html: `
+                    <div>
+                        <div>A password reset request has been issued for this email.</div>
+                        <div>If you haven't requested a password reset, please ignore this email.</div>
+                        <a href="${frontend_url}/password-recover/${token}">Create a new password.</a>
+                        <div>This link will expire after one hour.</div>
+                    </div>
+                `
+            });
+
+            return true;
+        })
+    }
+
+    @Mutation(() => Boolean)
+    async userSetPassword(
+        @Arg("token") token: string,
+        @Arg("password") password: string
+    ) {
+
+        const email = await getPasswordRecoveryEmail(token);
+        if (!email)
+            return false;
+
+        try {
+            await this.userRepo.update(
+                { email: email },
+                { hash: await argon2_hash(password) }
+            );
+        }
+        catch (e) {
+            return false;
+        }
+
+        return true;
+    }
+
     @Query(() => UserResponse, { description: "Get the currently logged in user." })
     async userGet(
         @Ctx() { req, res }: ResolverContext
@@ -240,5 +298,13 @@ export class UserResolver {
         }
 
         return { user: user };
+    }
+
+    @Query(() => Boolean)
+    async userIsPasswordResetTokenValid(
+        @Arg("token") token: string
+    ) {
+        const email = await getPasswordRecoveryEmailNoDelete(token);
+        return email !== null;
     }
 }

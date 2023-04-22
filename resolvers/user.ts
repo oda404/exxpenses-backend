@@ -11,6 +11,7 @@ import { noReplyMailer } from "../server/mailer";
 import Container from "typedi";
 import generateEmailVerificationToken, { getEmailForVerificationTokenAndDelete } from "../utils/generateEmailVerificationToken";
 import { generatePasswordRecoveryToken, getPasswordRecoveryEmail, getPasswordRecoveryEmailNoDelete } from "../utils/passwordRecovery";
+import { turnstile_verify_managed } from "../utils/turnstile";
 
 const frontend_url = process.env.FRONTEND_URL!;
 
@@ -47,7 +48,7 @@ function isPasswordValid(pass: string): boolean {
 
 function isEmailValid(email: string): boolean {
     const emailRegex = /^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
-    return email.match(emailRegex) !== null;
+    return email.match(emailRegex) !== null && email.length > 0;
 }
 
 /**
@@ -62,7 +63,8 @@ export class UserResolver {
 
     @Mutation(() => UserResponse, { description: "Register a new user." })
     async userRegister(
-        @Arg("registerUserData") { firstname, lastname, email, password }: UserRegisterInput
+        @Ctx() { req }: ResolverContext,
+        @Arg("registerUserData") { firstname, lastname, email, password, token }: UserRegisterInput
     ): Promise<UserResponse> {
 
         /* Trim strings */
@@ -79,11 +81,11 @@ export class UserResolver {
         if (!isEmailValid(email))
             return { error: { name: "Invalid email address!", field: "email" } };
 
-        if (password.includes(' '))
-            return { error: { name: "Password contains invalid characters!", field: "password" } }
-
         if (!isPasswordValid(password))
             return { error: { name: "Password can't be shorter than 8 characters!", field: "password" } };
+
+        if (!(await turnstile_verify_managed(token, req.headers)))
+            return { error: { name: "Server error, plase try again. If the error persists, please contact support.", field: "token" } }; // Lets be nice to the user :)
 
         const partuser: Partial<User> = {
             firstname: firstname,
@@ -103,7 +105,7 @@ export class UserResolver {
     @Mutation(() => UserResponse, { description: "Create a session for a user." })
     async userLogin(
         @Ctx() { req }: ResolverContext,
-        @Arg("loginUserData") { email, password }: UserLoginInput
+        @Arg("loginUserData") { email, password, token }: UserLoginInput
     ): Promise<UserResponse> {
 
         email = email.trim();
@@ -112,6 +114,9 @@ export class UserResolver {
 
         if (!isEmailValid(email) || !isPasswordValid(password))
             return genericError;
+
+        if (!(await turnstile_verify_managed(token, req.headers)))
+            return { error: { name: "Server error, plase try again. If the error persists, please contact support.", field: "token" } }; // Lets be nice to the user :)
 
         const user = await this.userRepo.findOneBy({ email: email });
         if (user === null)
@@ -226,9 +231,13 @@ export class UserResolver {
 
     @Mutation(() => Boolean)
     async userRecoverPassword(
-        @Arg("email") email: string
+        @Ctx() { req }: ResolverContext,
+        @Arg("email") email: string,
+        @Arg("token") token: string
     ) {
         /* This function always returns true */
+        if (!(await turnstile_verify_managed(token, req.headers)))
+            return false;
 
         return this.userRepo.manager.transaction(async (transManager) => {
             const transUserRepo = transManager.getRepository(User);

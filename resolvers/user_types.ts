@@ -17,6 +17,9 @@ export class UserRegisterInput implements Partial<User>
 
     @Field()
     password: string;
+
+    @Field()
+    token: string;
 }
 
 @InputType()
@@ -27,6 +30,9 @@ export class UserLoginInput implements Partial<User>
 
     @Field()
     password: string;
+
+    @Field()
+    token: string;
 };
 
 /* */

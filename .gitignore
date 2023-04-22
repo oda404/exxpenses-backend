@@ -3,3 +3,5 @@ dist/
 *.log
 .env
 session_secret
+*.env*
+!.env_example

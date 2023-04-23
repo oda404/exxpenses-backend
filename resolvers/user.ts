@@ -12,6 +12,9 @@ import Container from "typedi";
 import generateEmailVerificationToken, { getEmailForVerificationTokenAndDelete } from "../utils/generateEmailVerificationToken";
 import { generatePasswordRecoveryToken, getPasswordRecoveryEmail, getPasswordRecoveryEmailNoDelete } from "../utils/passwordRecovery";
 import { turnstile_verify_managed } from "../utils/turnstile";
+import development_reminder_ensure_logged_in from "./ensure_logged_in";
+import is_currency_valid from "../utils/currency";
+import { clear_user_session } from "../utils/user_session";
 
 const frontend_url = process.env.FRONTEND_URL!;
 
@@ -39,7 +42,7 @@ function psqlErrorToResponse(e: any): UserResponse {
 }
 
 function isNameValid(name: string): boolean {
-    return name.length > 0 && name.length < USERNAME_LENGTH;
+    return name.length > 0 && name.length <= USERNAME_LENGTH;
 }
 
 function isPasswordValid(pass: string): boolean {
@@ -112,9 +115,6 @@ export class UserResolver {
 
         const genericError = { error: { name: "Incorrect email or password!" } };
 
-        if (!isEmailValid(email) || !isPasswordValid(password))
-            return genericError;
-
         if (!(await turnstile_verify_managed(token, req.headers)))
             return { error: { name: "Server error, plase try again. If the error persists, please contact support.", field: "token" } }; // Lets be nice to the user :)
 
@@ -130,21 +130,19 @@ export class UserResolver {
         return { user: user };
     }
 
+    @development_reminder_ensure_logged_in()
     @Mutation(() => Boolean)
     async userLogout(
         @Ctx() { req, res }: ResolverContext
     ): Promise<boolean> {
-
         if (req.session.userId === undefined)
             return false;
 
-        /* FIXME: somehow wait for destroy to finish before returning. */
-        req.session.destroy(() => { });
-        res.clearCookie("user_session");
-
+        clear_user_session(req, res);
         return true;
     }
 
+    @development_reminder_ensure_logged_in()
     @Mutation(() => Boolean)
     async userUpdatePreferredCurrency(
         @Ctx() { req, res }: ResolverContext,
@@ -154,21 +152,20 @@ export class UserResolver {
             return false;
 
         preferred_currency = preferred_currency.trim();
+        if (!is_currency_valid(preferred_currency))
+            return false;
 
-        // TODO: currency validation
-
-        const resp = await this.userRepo.update({ id: req.session.userId }, { preferred_currency: preferred_currency });
-
+        const resp = await this.userRepo.update(req.session.userId, { preferred_currency: preferred_currency });
         if (resp.affected === 0) {
-            // No user
-            req.session.destroy(() => { })
-            res.clearCookie("user_session");
+            // User may have been deleted by from another session
+            clear_user_session(req, res);
             return false;
         }
 
         return true;
     }
 
+    @development_reminder_ensure_logged_in()
     @Mutation(() => Boolean)
     async userSendVerificationEmail(
         @Ctx() { req, res }: ResolverContext
@@ -180,18 +177,16 @@ export class UserResolver {
             const transUserRepo = transManager.getRepository(User);
 
             const user = await transUserRepo.findOneBy({ id: req.session.userId });
-            if (!user) {
-                req.session.destroy(() => { })
-                res.clearCookie("user_session");
+            if (user === null) {
+                // User may have been deleted by from another session
+                clear_user_session(req, res);
                 return false;
             }
 
-            if (user.verified_email) {
+            if (user.verified_email)
                 return false;
-            }
 
             const token = await generateEmailVerificationToken(user.email);
-
             const emailres = await noReplyMailer.sendMail({
                 from: "Exxpenses <no-reply@exxpenses.com>",
                 to: user.email,
@@ -213,7 +208,7 @@ export class UserResolver {
         @Arg("token") token: string
     ) {
         const email = await getEmailForVerificationTokenAndDelete(token);
-        if (!email)
+        if (email === null)
             return false;
 
         try {
@@ -235,6 +230,8 @@ export class UserResolver {
         @Arg("email") email: string,
         @Arg("token") token: string
     ) {
+        email = email.trim();
+
         /* This function always returns true */
         if (!(await turnstile_verify_managed(token, req.headers)))
             return false;
@@ -243,7 +240,7 @@ export class UserResolver {
             const transUserRepo = transManager.getRepository(User);
 
             const user = await transUserRepo.findOneBy({ email: email });
-            if (!user)
+            if (user === null)
                 return true;
 
             const token = await generatePasswordRecoveryToken(email);
@@ -270,17 +267,19 @@ export class UserResolver {
     @Mutation(() => Boolean)
     async userSetPassword(
         @Arg("token") token: string,
-        @Arg("password") password: string
+        @Arg("password") new_password: string
     ) {
-
         const email = await getPasswordRecoveryEmail(token);
-        if (!email)
+        if (email === null)
+            return false;
+
+        if (!isPasswordValid(new_password))
             return false;
 
         try {
             await this.userRepo.update(
                 { email: email },
-                { hash: await argon2_hash(password) }
+                { hash: await argon2_hash(new_password) }
             );
         }
         catch (e) {
@@ -290,19 +289,17 @@ export class UserResolver {
         return true;
     }
 
+    @development_reminder_ensure_logged_in()
     @Query(() => UserResponse, { description: "Get the currently logged in user." })
     async userGet(
         @Ctx() { req, res }: ResolverContext
     ): Promise<UserResponse> {
-
-        const id = req.session.userId;
-        if (id === undefined)
+        if (req.session.userId === undefined)
             return { error: { name: "Not signed in" } };
 
-        const user = await this.userRepo.findOneBy({ id: id });
+        const user = await this.userRepo.findOneBy({ id: req.session.userId });
         if (user === null) {
-            req.session.destroy(() => { });
-            res.clearCookie("user_session");
+            clear_user_session(req, res);
             return { error: { name: "Internal server error" } };
         }
 

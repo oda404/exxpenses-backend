@@ -4,9 +4,11 @@ import Container from "typedi";
 import { Between, LessThanOrEqual, MoreThanOrEqual, Repository } from "typeorm";
 import { Category } from "../models/category";
 import { Expense } from "../models/expense";
-import { CURRENCY_LENGTH, EXPENSE_DESCRIPTION_LENGTH } from "../models/types";
-import { ExpenseAddInput, ExpenseDeleteInput, ExpenseEditInput, ExpenseResponse, ExpensesCostResponse, ExpensesCostResponseMultiple, ExpensesGetInput, ExpensesGetInputMultiple, ExpenseTotalCostMultiple } from "./expense_types";
+import { CATEGORY_NAME_LENGTH, CURRENCY_LENGTH, EXPENSE_DESCRIPTION_LENGTH } from "../models/types";
+import { ExpenseAddInput, ExpenseDeleteInput, ExpenseEditInput, ExpenseResponse, ExpensesCostResponse, ExpensesCostResponseMultiple, ExpensesGetInput, ExpensesGetInputMultiple } from "./expense_types";
 import { ResolverContext } from "./types";
+import development_reminder_ensure_logged_in from "./ensure_logged_in";
+import is_currency_valid from "../utils/currency";
 
 /* Return an UserResponse based on the Postgres exception we are given. */
 // function psqlErrorToResponse(e: any): ExpenseResponse {
@@ -70,15 +72,16 @@ export class ExpenseResolver {
 
     private readonly expenseRepo = Container.get<Repository<Expense>>("psqlExpenseRepo");
 
+    @development_reminder_ensure_logged_in()
     @Mutation(() => ExpenseResponse)
     async expenseAdd(
         @Ctx() { req }: ResolverContext,
         @Arg("expenseAddData") { category_name, price, description, currency, date }: ExpenseAddInput
     ): Promise<ExpenseResponse> {
-
         if (req.session.userId === undefined)
             return { error: { name: "Not singed in" } };
 
+        category_name = category_name.trim();
         description = description?.trim();
         currency = currency.trim();
 
@@ -86,13 +89,17 @@ export class ExpenseResolver {
             return { error: { name: "Invalid price", field: "price" } };
 
         if (description !== undefined) {
+            if (description.length === 0)
+                return { error: { name: "Description can't be empty", field: "description" } };
+
             if (description.length > EXPENSE_DESCRIPTION_LENGTH)
                 return { error: { name: "Description can't be longer than 60 characters", field: "description" } };
         }
 
-        // TODO further validate currency
-        if (currency.length > CURRENCY_LENGTH)
-            return { error: { name: `Currency's name can't be longer than ${CURRENCY_LENGTH} characters`, field: "currency" } }
+        if (!is_currency_valid(currency))
+            return { error: { name: "Invalid currency", field: "currency" } };
+
+        // TODO: validate date?
 
         // Execute all of this shit in a transaction to avoid any race conditions
         return this.expenseRepo.manager.transaction(async (transManager) => {
@@ -125,23 +132,32 @@ export class ExpenseResolver {
         })
     }
 
+    @development_reminder_ensure_logged_in()
     @Mutation(() => ExpenseResponse)
     async expenseEdit(
         @Ctx() { req }: ResolverContext,
         @Arg("expenseEditData") { category_name, expense_id, price, currency, date }: ExpenseEditInput
     ): Promise<ExpenseResponse> {
-
         if (req.session.userId === undefined)
             return { error: { name: "Not logged in" } };
+
+        category_name = category_name.trim();
+        // description = description?.trim();
+        currency = currency.trim();
 
         if (price <= 0)
             return { error: { name: "Invalid price", field: "price" } };
 
-        /* TODO: further validate currency */
-        if (currency.length > CURRENCY_LENGTH)
-            return { error: { name: `Currency's name can't be longer than ${CURRENCY_LENGTH} characters`, field: "currency" } }
+        // if (description !== undefined) {
+        //     if (description.length === 0)
+        //         return { error: { name: "Description can't be empty", field: "description" } };
 
-        currency = currency.trim();
+        //     if (description.length > EXPENSE_DESCRIPTION_LENGTH)
+        //         return { error: { name: "Description can't be longer than 60 characters", field: "description" } };
+        // }
+
+        if (!is_currency_valid(currency))
+            return { error: { name: "Invalid currency", field: "currency" } };
 
         // Execute all of this shit in a transaction to avoid any race conditions
         return this.expenseRepo.manager.transaction(async (transManager) => {
@@ -150,28 +166,32 @@ export class ExpenseResolver {
 
             const category = await transCategoryRepo.findOneBy({ name: category_name, user: { id: req.session.userId } });
             if (category === null)
-                return { error: { name: "Category doesn't exist, try creating it first" } };
+                return { error: { name: "Category doesn't exist." } };
 
             const expense = await transExpenseRepo.findOneBy({ id: expense_id, category: { id: category.id } });
-            if (expense === null) {
+            if (expense === null)
                 return { error: { name: "Expense doesn't exist", field: expense_id } };
-            }
 
             expense.price = price;
             expense.currency = currency;
             expense.date = date;
 
-            let res = await transExpenseRepo.save(expense);
-            return { expenses: [res] };
+            try {
+                let res = await transExpenseRepo.save(expense);
+                return { expenses: [res] };
+            }
+            catch (e) {
+                return { errors: { name: "Internal server error. Either that or you're being a bitch :)" } };
+            }
         })
     }
 
+    @development_reminder_ensure_logged_in()
     @Mutation(() => Boolean)
     async expenseDelete(
         @Ctx() { req }: ResolverContext,
         @Arg("expenseDeleteData") { expense_id, category_name }: ExpenseDeleteInput
     ): Promise<boolean> {
-
         if (req.session.userId === null)
             return false;
 
@@ -192,12 +212,12 @@ export class ExpenseResolver {
         })
     }
 
+    @development_reminder_ensure_logged_in()
     @Query(() => ExpenseResponse)
     async expensesGet(
         @Ctx() { req }: ResolverContext,
         @Arg("expenseGetData") { category_name, since, until }: ExpensesGetInput
     ): Promise<ExpenseResponse> {
-
         if (req.session.userId === undefined)
             return { error: { name: "Not singed in" } };
 
@@ -223,12 +243,12 @@ export class ExpenseResolver {
         })
     }
 
+    @development_reminder_ensure_logged_in()
     @Query(() => ExpensesCostResponse)
     async expensesTotalCostGet(
         @Ctx() { req }: ResolverContext,
         @Arg("expenseGetData") { category_name, since, until }: ExpensesGetInput
     ): Promise<ExpensesCostResponse> {
-
         if (req.session.userId === undefined)
             return { error: { name: "Not singed in" } };
 
@@ -251,10 +271,7 @@ export class ExpenseResolver {
 
             let expenses = await getExpensesWithDate(since, until, category, transExpenseRepo);
 
-            let res: ExpensesCostResponse = {
-                costs: []
-            };
-
+            let res: ExpensesCostResponse = { costs: [] };
             expenses.forEach((expense) => {
                 let idx = res.costs!.findIndex(e => e.currency === expense.currency);
 
@@ -267,12 +284,12 @@ export class ExpenseResolver {
                     let y = new Decimal(expense.price);
                     res.costs![idx].price = x.add(y).toNumber();
                 }
-            })
-
+            });
             return res;
         });
     }
 
+    @development_reminder_ensure_logged_in()
     @Query(() => ExpensesCostResponseMultiple)
     async expensesTotalCostGetMultiple(
         @Ctx() { req }: ResolverContext,
@@ -281,9 +298,6 @@ export class ExpenseResolver {
 
         if (req.session.userId === undefined)
             return { error: { name: "Not singed in" } };
-
-        if (category_names.length === 0)
-            return { error: { name: "At least one category name is required!" } };
 
         if (since !== undefined && until !== undefined) {
             if (since.getTime() >= until.getTime())

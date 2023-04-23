@@ -6,6 +6,9 @@ import { CATEGORY_NAME_LENGTH } from "../models/types";
 import { User } from "../models/user";
 import { CategoryAddInput, CategoryEditInput, CategoryResposne } from "./category_types";
 import { ResolverContext } from "./types";
+import development_reminder_ensure_logged_in from "./ensure_logged_in";
+import is_currency_valid from "../utils/currency";
+import { clear_user_session } from "../utils/user_session";
 
 /* Return an UserResponse based on the Postgres exception we are given. */
 function psqlErrorToResponse(e: any): CategoryResposne {
@@ -36,12 +39,12 @@ export class CategoryResolver {
     private readonly userRepo = Container.get<Repository<User>>("psqlUserRepo");
     private readonly categoryRepo = Container.get<Repository<Category>>("psqlCategoryRepo");
 
+    @development_reminder_ensure_logged_in()
     @Mutation(() => CategoryResposne)
     async categoryAdd(
-        @Ctx() { req }: ResolverContext,
+        @Ctx() { req, res }: ResolverContext,
         @Arg("categoryAddData") { name, default_currency }: CategoryAddInput
     ): Promise<CategoryResposne> {
-
         if (req.session.userId === undefined)
             return { error: { name: "Not singed in" } };
 
@@ -54,7 +57,8 @@ export class CategoryResolver {
         if (name.length === 0)
             return { error: { name: "Name can't be empty", field: "name" } };
 
-        // TODO validate default_currency
+        if (!is_currency_valid(default_currency))
+            return { error: { name: "Invalid currency", field: "currency" } };
 
         return this.categoryRepo.manager.transaction(async (transManager) => {
             const transUserRepo = transManager.getRepository(User);
@@ -62,7 +66,7 @@ export class CategoryResolver {
 
             const user = await transUserRepo.findOneBy({ id: req.session.userId });
             if (user === null) {
-                req.session.destroy(() => { })
+                clear_user_session(req, res);
                 return { error: { name: "Internal server error" } };
             }
 
@@ -79,22 +83,32 @@ export class CategoryResolver {
             catch (e) {
                 return psqlErrorToResponse(e);
             }
-        })
+        });
     }
 
+    @development_reminder_ensure_logged_in()
     @Mutation(() => Boolean)
     async categoryDelete(
         @Ctx() { req }: ResolverContext,
         @Arg("category_name") name: string
     ): Promise<boolean> {
-
         if (req.session.userId === undefined)
             return false;
 
-        const res = await this.categoryRepo.delete({ name: name, user: { id: req.session.userId } });
-        return res.affected === 1;
+        name = name.trim();
+
+        /* I don't actually know if this function throws at any point since the docs don't fucking say anything. 
+        So better defined than sorry :) */
+        try {
+            const res = await this.categoryRepo.delete({ name: name, user: { id: req.session.userId } });
+            return res.affected === 1;
+        }
+        catch (e) {
+            return false;
+        }
     }
 
+    @development_reminder_ensure_logged_in()
     @Mutation(() => Boolean)
     async categoryEdit(
         @Ctx() { req }: ResolverContext,
@@ -112,27 +126,26 @@ export class CategoryResolver {
         if (category.name.length === 0)
             return { error: { name: "Name can't be empty", field: "name" } };
 
-        // TODO validate default_currency
+        if (!is_currency_valid(category.default_currency))
+            return { error: { name: "Invalid currency", field: "currency" } };
 
-        let result: any;
         try {
-            result = await this.categoryRepo.update(
+            let result = await this.categoryRepo.update(
                 { id: category.id, user: { id: req.session.userId } },
                 { name: category.name, default_currency: category.default_currency }
             );
+            return result.affected === 1;
         }
         catch (e) {
             return false;
         }
-
-        return result.affected === 1;
     }
 
+    @development_reminder_ensure_logged_in()
     @Query(() => CategoryResposne)
     async categoriesGet(
         @Ctx() { req, res }: ResolverContext,
     ): Promise<CategoryResposne> {
-
         if (req.session.userId === undefined)
             return { error: { name: "Not logged in" } };
 
@@ -143,32 +156,31 @@ export class CategoryResolver {
         });
 
         if (user === null) {
-            req.session.destroy(() => { });
-            res.clearCookie("user_session");
+            clear_user_session(req, res);
             return { error: { name: "Internal server error" } };
         }
 
         return { categories: user.categories };
     }
 
+    @development_reminder_ensure_logged_in()
     @Query(() => CategoryResposne)
     async categoryGet(
-        @Ctx() { req, res }: ResolverContext,
+        @Ctx() { req }: ResolverContext,
         @Arg("categoryName") name: string
     ): Promise<CategoryResposne> {
-
         if (req.session.userId === undefined)
             return { error: { name: "Not logged in" } };
+
+        name = name.trim();
 
         const category = await this.categoryRepo.findOne({
             where: { name: name, user: { id: req.session.userId } }
         });
 
-        if (!category)
-            return { error: { name: "No such category", field: "categoryName" } }
+        if (category === null)
+            return { error: { name: "No such category", field: "name" } };
 
-        return {
-            categories: [category]
-        }
+        return { categories: [category] };
     }
 };

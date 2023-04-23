@@ -1,5 +1,5 @@
 
-import { Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToOne, Unique, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToOne, Unique, UpdateDateColumn } from "typeorm";
 import { Expense } from "./expense";
 import { User } from "./user";
 import { CATEGORY_NAME_LENGTH, CURRENCY_LENGTH } from "./types";

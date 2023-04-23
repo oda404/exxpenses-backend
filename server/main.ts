@@ -12,8 +12,8 @@ import { closePSQLConnection, initPSQLConnection } from "./psql";
 import { customFormatError } from "./error_format";
 import { ResolverContext } from "../resolvers/types";
 import cors = require("cors");
-import session from "express-session";
 import connectRedis from "connect-redis";
+import session from "express-session";
 const RedisStore = connectRedis(session);
 import Redis from "ioredis";
 import { readFileSync } from "fs";
@@ -58,9 +58,10 @@ async function new_apollo_server() {
     });
 }
 
-async function new_redis_store() {
+function new_redis_store() {
     return new RedisStore({
         client: Container.get<Redis>("redisClient"),
+        disableTouch: false,
     });
 }
 
@@ -76,17 +77,16 @@ async function new_http_server() {
 
     /* Creat express server */
     const app = express();
-    const redisStore = await new_redis_store();
 
     app.use(cors({
         origin: frontend_url,
-        credentials: true
+        credentials: true,
     }));
 
     /* Cookies middleware */
     app.use(session({
         name: "user_session",
-        store: redisStore,
+        store: new_redis_store(),
         cookie: {
             path: "/",
             httpOnly: true,
@@ -146,13 +146,12 @@ async function main() {
         console.log(`server: Listening on ${server_bind_address}:${port_number}`);
     });
 
-    process.on("SIGINT", () => {
+    process.on("exit", () => {
         server.close(async () => {
             await closePSQLConnection();
             await closeRedisConnection();
             noReplyMailer.close();
-            exit(1);
-        })
+        });
     })
 }
 

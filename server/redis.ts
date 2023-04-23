@@ -15,16 +15,14 @@ export async function initRedisConnection() {
         host: redis_host,
         port: Number(redis_port),
         password: redis_pass,
+        lazyConnect: true
     });
-
-
+    await redisClient.connect();
     Container.set("redisClient", redisClient);
 }
 
 export async function closeRedisConnection() {
     const redisClient = Container.get<Redis>("redisClient");
-
     await redisClient.quit();
-
     Container.remove("redisClient");
 }

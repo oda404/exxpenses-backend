@@ -9,6 +9,9 @@ import { ExpenseAddInput, ExpenseDeleteInput, ExpenseEditInput, ExpenseResponse,
 import { ResolverContext } from "./types";
 import development_reminder_ensure_logged_in from "./ensure_logged_in";
 import is_currency_valid from "../utils/currency";
+import { User } from "../models/user";
+import { PLAN_FREE, PLAN_FREE_MAX_EXPENSES } from "../utils/plan";
+import { clear_user_session } from "../utils/user_session";
 
 /* Return an UserResponse based on the Postgres exception we are given. */
 // function psqlErrorToResponse(e: any): ExpenseResponse {
@@ -75,7 +78,7 @@ export class ExpenseResolver {
     @development_reminder_ensure_logged_in()
     @Mutation(() => ExpenseResponse)
     async expenseAdd(
-        @Ctx() { req }: ResolverContext,
+        @Ctx() { req, res }: ResolverContext,
         @Arg("expenseAddData") { category_name, price, description, currency, date }: ExpenseAddInput
     ): Promise<ExpenseResponse> {
         if (req.session.userId === undefined)
@@ -103,15 +106,28 @@ export class ExpenseResolver {
 
         // Execute all of this shit in a transaction to avoid any race conditions
         return this.expenseRepo.manager.transaction(async (transManager) => {
+            const userTransRepo = transManager.getRepository(User);
             const transCategoryRepo = transManager.getRepository(Category);
             const transExpenseRepo = transManager.getRepository(Expense);
 
-            const category = await transCategoryRepo.findOne({
-                where: { name: category_name, user: { id: req.session.userId } }
-            });
+            /* This should be one single query and left join categories where ... */
+            const user = await userTransRepo.findOneBy({ id: req.session.userId });
+            if (user === null) {
+                clear_user_session(req, res);
+                return { error: { name: "Internal server error" } };
+            }
 
+            const category = await transCategoryRepo.findOneBy({ name: category_name, user: { id: req.session.userId } });
             if (category === null)
-                return { error: { name: "Category doesn't exist, try creating it first", field: "category_name" } };
+                return { error: { name: "Category doesn't exist, try creating it first", field: "category" } };
+
+            if (user.plan === PLAN_FREE) {
+                let start_of_month = new Date(date.getFullYear(), date.getMonth(), 1);
+                let end_of_month = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+                let expense_count = (await getExpensesWithDate(start_of_month, end_of_month, category, transExpenseRepo)).length;
+                if (expense_count >= PLAN_FREE_MAX_EXPENSES)
+                    return { error: { name: `Free accounts are limited to ${PLAN_FREE_MAX_EXPENSES} monthly expenses per category, plase consider switching to a premium account.` } };
+            }
 
             let partexpense: Partial<Expense> = {
                 price: price,
@@ -236,7 +252,7 @@ export class ExpenseResolver {
             });
 
             if (category === null)
-                return { error: { name: "Category doesn't exist, try creating it first", field: "category_name" } };
+                return { error: { name: "Category doesn't exist, try creating it first", field: "category" } };
 
             let expenses = await getExpensesWithDate(since, until, category, transExpenseRepo);
             return { expenses: expenses };
@@ -267,7 +283,7 @@ export class ExpenseResolver {
             });
 
             if (category === null)
-                return { error: { name: "Category doesn't exist, try creating it first", field: "category_name" } };
+                return { error: { name: "Category doesn't exist, try creating it first", field: "category" } };
 
             let expenses = await getExpensesWithDate(since, until, category, transExpenseRepo);
 
@@ -327,7 +343,7 @@ export class ExpenseResolver {
                 });
 
                 if (category === null)
-                    return { error: { name: "Category doesn't exist, try creating it first", field: "category_name" } };
+                    return { error: { name: "Category doesn't exist, try creating it first", field: "category" } };
 
                 let expenses = await getExpensesWithDate(since, until, category, transExpenseRepo);
 

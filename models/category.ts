@@ -32,4 +32,6 @@ export class Category {
 
     @OneToMany(() => Expense, (expense) => expense.category)
     expenses: Expense[]
+
+    expenseCount?: number;
 }

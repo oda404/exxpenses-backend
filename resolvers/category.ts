@@ -9,6 +9,7 @@ import { ResolverContext } from "./types";
 import development_reminder_ensure_logged_in from "./ensure_logged_in";
 import is_currency_valid from "../utils/currency";
 import { clear_user_session } from "../utils/user_session";
+import { PLAN_FREE, PLAN_FREE_MAX_CATEGS } from "../utils/plan";
 
 /* Return an UserResponse based on the Postgres exception we are given. */
 function psqlErrorToResponse(e: any): CategoryResposne {
@@ -64,11 +65,19 @@ export class CategoryResolver {
             const transUserRepo = transManager.getRepository(User);
             const transCategoryRepo = transManager.getRepository(Category);
 
-            const user = await transUserRepo.findOneBy({ id: req.session.userId });
+            const user = await transUserRepo
+                .createQueryBuilder('user')
+                .where("user.id=:id", { id: req.session.userId })
+                .loadRelationCountAndMap('user.categoryCount', 'user.categories') // count posts for each user
+                .getOne();
+
             if (user === null) {
                 clear_user_session(req, res);
                 return { error: { name: "Internal server error" } };
             }
+
+            if (user.plan === PLAN_FREE && user.categoryCount! >= PLAN_FREE_MAX_CATEGS)
+                return { error: { name: `Free accounts are limited to ${PLAN_FREE_MAX_CATEGS} categories, plase consider switching to a premium account.` } };
 
             let partcateg: Partial<Category> = {
                 name: name,

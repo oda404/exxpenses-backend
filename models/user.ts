@@ -3,6 +3,7 @@ import { Entity, Column, PrimaryGeneratedColumn, OneToMany, CreateDateColumn } f
 import { Category } from "./category";
 import { ObjectType, Field, ID } from "type-graphql";
 import { CURRENCY_LENGTH, USERNAME_LENGTH } from "./types";
+import { PLAN_FREE, PlanType } from "../utils/plan";
 
 @ObjectType({ description: "The user model" })
 @Entity({ name: "users" })
@@ -34,6 +35,10 @@ export class User {
     @Field({ description: "The user's preferred currency", nullable: true })
     @Column({ length: CURRENCY_LENGTH, nullable: true })
     preferred_currency: string;
+
+    @Field({ description: "The user's plan" })
+    @Column({ default: PLAN_FREE })
+    plan: PlanType;
 
     @Column()
     hash: string;

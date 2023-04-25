@@ -1,0 +1,4 @@
+
+export const PLAN_FREE = 0;
+export const PLAN_PREMIUM = 1;
+export type PlanType = typeof PLAN_FREE | typeof PLAN_PREMIUM;

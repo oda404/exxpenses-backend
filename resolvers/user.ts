@@ -98,7 +98,9 @@ export class UserResolver {
         };
 
         try {
-            return { user: await this.userRepo.save(partuser) };
+            let user = await this.userRepo.save(partuser);
+            req.session.userId = user.id;
+            return { user: user };
         }
         catch (e) {
             return psqlErrorToResponse(e);

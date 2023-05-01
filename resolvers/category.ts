@@ -183,9 +183,10 @@ export class CategoryResolver {
 
         name = name.trim();
 
-        const category = await this.categoryRepo.findOne({
-            where: { name: name, user: { id: req.session.userId } }
-        });
+        const category = await this.categoryRepo
+            .createQueryBuilder("category")
+            .where("category.name=:name AND category.userId=:id", { name: name, id: req.session.userId })
+            .getOne();
 
         if (category === null)
             return { error: { name: "No such category", field: "name" } };

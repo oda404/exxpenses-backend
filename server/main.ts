@@ -108,23 +108,7 @@ async function new_http_server() {
     apollo_middleware.applyMiddleware({ app, cors: false, path: "/" });
 
     let server: HTTPServer | HTTPSServer;
-
-    if (env === "prod") {
-        console.log(`https: Reading ssl certificate from ${https_cert_path}`);
-        console.log(`https: Reading ssl certificate key from ${https_key_path}`);
-
-        server = createHttpsServer(
-            {
-                key: readFileSync(https_key_path),
-                cert: readFileSync(https_cert_path)
-            },
-            app
-        );
-    }
-    else {
-        server = createHttpServer(app);
-    }
-
+    server = createHttpServer(app);
     return server;
 }
 

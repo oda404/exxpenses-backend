@@ -14,5 +14,9 @@ RUN yarn compile
 
 EXPOSE 8888
 
+RUN useradd -s /bin/bash -m exxpenses
+
+USER exxpenses
+
 CMD [ "yarn", "start" ]
 

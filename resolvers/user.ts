@@ -292,6 +292,58 @@ export class UserResolver {
     }
 
     @development_reminder_ensure_logged_in()
+    @Mutation(() => Boolean)
+    async userDeleteAccount(
+        @Ctx() { req }: ResolverContext,
+        @Arg("password") password: string
+    ) {
+        if (req.session.userId === undefined)
+            return false;
+
+        try {
+            const user = await this.userRepo.findOneBy({ id: req.session.userId });
+            if (user === null)
+                return false;
+
+            if (!(await argon2_verify(user.hash, password)))
+                return false;
+
+            const res = await this.userRepo.delete({ id: req.session.userId });
+            return res.affected === 1;
+        }
+        catch (e) {
+            return false;
+        }
+    }
+
+    @development_reminder_ensure_logged_in()
+    @Mutation(() => Boolean)
+    async userChangePassword(
+        @Ctx() { req }: ResolverContext,
+        @Arg("old_password") old_password: string,
+        @Arg("password") password: string
+    ) {
+        if (req.session.userId === undefined)
+            return false;
+
+        try {
+            const user = await this.userRepo.findOneBy({ id: req.session.userId });
+            if (user === null)
+                return false;
+
+            if (!(await argon2_verify(user.hash, old_password)))
+                return false;
+
+            user.hash = await argon2_hash(password);
+            const res = await this.userRepo.update({ id: user.id }, { hash: user.hash });
+            return res.affected === 1;
+        }
+        catch (e) {
+            return false;
+        }
+    }
+
+    @development_reminder_ensure_logged_in()
     @Query(() => UserResponse, { description: "Get the currently logged in user." })
     async userGet(
         @Ctx() { req, res }: ResolverContext

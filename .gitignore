@@ -4,4 +4,4 @@ dist/
 .env
 session_secret
 *.env*
-!.env_example
+!.env_dev

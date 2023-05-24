@@ -62,6 +62,7 @@ function new_redis_store() {
     return new RedisStore({
         client: Container.get<Redis>("redisClient"),
         disableTouch: false,
+        ttl: 1000 * 60 * 60 * 24 * 4 // 4 days
     });
 }
 
@@ -91,7 +92,7 @@ async function new_http_server() {
             path: "/",
             httpOnly: true,
             secure: env === "prod",
-            maxAge: 1000 * 60 * 60 * 24 * 4, // 4 days
+            maxAge: 1000 * 60 * 60 * 24 * (365 / 2), // 6 months
             sameSite: "lax",
             domain: session_domain
         },

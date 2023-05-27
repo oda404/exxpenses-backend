@@ -44,3 +44,18 @@ export class UserResponse {
     @Field(() => GenericFieldError, { nullable: true })
     error?: GenericFieldError;
 };
+
+@ObjectType()
+export class UserSubscriptionInfo {
+    @Field()
+    since: Date;
+
+    @Field()
+    until: Date;
+
+    @Field()
+    price: number;
+
+    @Field()
+    cancel_at_end: boolean;
+}

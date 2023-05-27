@@ -126,7 +126,7 @@ export class ExpenseResolver {
                 let end_of_month = new Date(date.getFullYear(), date.getMonth() + 1, 0);
                 let expense_count = (await getExpensesWithDate(start_of_month, end_of_month, category, transExpenseRepo)).length;
                 if (expense_count >= PLAN_FREE_MAX_EXPENSES)
-                    return { error: { name: `Free accounts are limited to ${PLAN_FREE_MAX_EXPENSES} monthly expenses per category, plase consider switching to a premium account.` } };
+                    return { error: { name: `Free accounts are limited to ${PLAN_FREE_MAX_EXPENSES} monthly expenses per category, plase consider switching to a premium plan.` } };
             }
 
             let partexpense: Partial<Expense> = {

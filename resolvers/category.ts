@@ -77,7 +77,7 @@ export class CategoryResolver {
             }
 
             if (user.plan === PLAN_FREE && user.categoryCount! >= PLAN_FREE_MAX_CATEGS)
-                return { error: { name: `Free accounts are limited to ${PLAN_FREE_MAX_CATEGS} categories, plase consider switching to a premium account.` } };
+                return { error: { name: `Free accounts are limited to ${PLAN_FREE_MAX_CATEGS} categories, plase consider switching to a premium plan.` } };
 
             let partcateg: Partial<Category> = {
                 name: name,

@@ -40,6 +40,9 @@ export class User {
     @Column({ default: PLAN_FREE })
     plan: PlanType;
 
+    @Column({ default: null, nullable: true })
+    stripe_subid: string;
+
     @Column()
     hash: string;
 

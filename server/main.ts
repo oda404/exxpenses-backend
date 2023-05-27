@@ -24,6 +24,9 @@ import { Server as HTTPSServer } from "https";
 import { noReplyMailer } from "./mailer";
 import { closeRedisConnection, initRedisConnection } from "./redis";
 import { Container } from "typedi";
+import payment_create_route, { payment_webhook } from "../payment/routes";
+import { subscriptions_subsystem_init } from "../payment/handle_subscription";
+var body = require("body-parser")
 
 const env = process.env.ENV!;
 
@@ -105,8 +108,11 @@ async function new_http_server() {
     const apollo_middleware = await new_apollo_server()
     await apollo_middleware.start();
 
+    app.post("/rest/create-subscribe-intent", body.json(), payment_create_route);
+    app.post("/rest/subscribe-webhook", body.raw({ type: 'application/json' }), payment_webhook);
+
     /* Add apollo as a middleware to express */
-    apollo_middleware.applyMiddleware({ app, cors: false, path: "/" });
+    apollo_middleware.applyMiddleware({ app, cors: false, path: "/gql" });
 
     let server: HTTPServer | HTTPSServer;
     server = createHttpServer(app);
@@ -124,6 +130,7 @@ async function main() {
     /* Initialize connection to Redis server */
     await initRedisConnection();
 
+    await subscriptions_subsystem_init();
     const server = await new_http_server();
 
     const port_number = Number(server_bind_port);

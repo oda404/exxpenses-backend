@@ -3,7 +3,7 @@ import { User } from "../models/user";
 import { Resolver, Arg, Query, Mutation, Ctx } from "type-graphql";
 // TODO: maybe switch to libsodium
 import { hash as argon2_hash, verify as argon2_verify } from "argon2"
-import { UserLoginInput, UserRegisterInput, UserResponse } from "./user_types";
+import { UserLoginInput, UserRegisterInput, UserResponse, UserSubscriptionInfo } from "./user_types";
 import { QueryFailedError, Repository } from "typeorm";
 import { USERNAME_LENGTH } from "../models/types";
 import { ResolverContext } from "./types";
@@ -15,6 +15,7 @@ import { turnstile_verify_managed } from "../utils/turnstile";
 import development_reminder_ensure_logged_in from "./ensure_logged_in";
 import is_currency_valid from "../utils/currency";
 import { clear_user_session } from "../utils/user_session";
+import { subscription_get_info, subscription_unsubscribe_delayed } from "../payment/handle_subscription";
 
 const frontend_url = process.env.FRONTEND_URL!;
 
@@ -344,6 +345,27 @@ export class UserResolver {
     }
 
     @development_reminder_ensure_logged_in()
+    @Mutation(() => Boolean)
+    async userUnsubscribe(
+        @Ctx() { req, res }: ResolverContext,
+    ) {
+        if (req.session.userId === undefined)
+            return false;
+
+        const user = await this.userRepo.findOneBy({ id: req.session.userId });
+        if (user === null) {
+            clear_user_session(req, res);
+            return false;
+        }
+
+        if (user.plan === 0 || user.stripe_subid === null)
+            return false;
+
+        await subscription_unsubscribe_delayed(user.stripe_subid);
+        return true;
+    }
+
+    @development_reminder_ensure_logged_in()
     @Query(() => UserResponse, { description: "Get the currently logged in user." })
     async userGet(
         @Ctx() { req, res }: ResolverContext
@@ -366,5 +388,34 @@ export class UserResolver {
     ) {
         const email = await getPasswordRecoveryEmailNoDelete(token);
         return email !== null;
+    }
+
+    @development_reminder_ensure_logged_in()
+    @Query(() => UserSubscriptionInfo, { nullable: true })
+    async userGetSubscriptionInfo(
+        @Ctx() { req, res }: ResolverContext,
+    ): Promise<UserSubscriptionInfo | null> {
+        if (req.session.userId === undefined)
+            return null;
+
+        const user = await this.userRepo.findOneBy({ id: req.session.userId });
+        if (user === null) {
+            clear_user_session(req, res);
+            return null;
+        }
+
+        if (user.plan === 0 || user.stripe_subid === null)
+            return null;
+
+        let response = await subscription_get_info(user.stripe_subid);
+        if (response.price === undefined || response.since === undefined || response.until === undefined)
+            return null
+
+        return {
+            since: new Date(response.since * 1000),
+            until: new Date(response.until * 1000),
+            price: response.price,
+            cancel_at_end: response.cancel_at_end
+        };
     }
 }

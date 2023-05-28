@@ -3,6 +3,9 @@ import { Repository } from "typeorm";
 import { User } from "../models/user";
 import { PlanType } from "../utils/plan";
 import { stripe } from "./routes";
+import { UserSubscriptionPricing } from "../resolvers/user_types";
+
+const premium_id = process.env.STRIPE_PREMIUM_ID!;
 
 let userRepo: Repository<User>;
 
@@ -49,5 +52,19 @@ export async function subscription_unsubscribe_delayed(subid: string) {
     }
     catch (e) {
 
+    }
+}
+
+export async function subscription_get_premium_pricing(): Promise<UserSubscriptionPricing | null> {
+    const res = await stripe.products.retrieve(premium_id);
+    if (!res.default_price)
+        return null;
+
+    const price = await stripe.prices.retrieve(res.default_price as string);
+    if (price.unit_amount === null)
+        return null;
+
+    return {
+        price: price.unit_amount
     }
 }

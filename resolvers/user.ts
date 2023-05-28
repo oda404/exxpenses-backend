@@ -3,7 +3,7 @@ import { User } from "../models/user";
 import { Resolver, Arg, Query, Mutation, Ctx } from "type-graphql";
 // TODO: maybe switch to libsodium
 import { hash as argon2_hash, verify as argon2_verify } from "argon2"
-import { UserLoginInput, UserRegisterInput, UserResponse, UserSubscriptionInfo } from "./user_types";
+import { UserLoginInput, UserRegisterInput, UserResponse, UserSubscriptionInfo, UserSubscriptionPricing } from "./user_types";
 import { QueryFailedError, Repository } from "typeorm";
 import { USERNAME_LENGTH } from "../models/types";
 import { ResolverContext } from "./types";
@@ -15,7 +15,7 @@ import { turnstile_verify_managed } from "../utils/turnstile";
 import development_reminder_ensure_logged_in from "./ensure_logged_in";
 import is_currency_valid from "../utils/currency";
 import { clear_user_session } from "../utils/user_session";
-import { subscription_get_info, subscription_unsubscribe_delayed } from "../payment/handle_subscription";
+import { subscription_get_info, subscription_get_premium_pricing, subscription_unsubscribe_delayed } from "../payment/handle_subscription";
 
 const frontend_url = process.env.FRONTEND_URL!;
 
@@ -417,5 +417,17 @@ export class UserResolver {
             price: response.price,
             cancel_at_end: response.cancel_at_end
         };
+    }
+
+    @Query(() => UserSubscriptionPricing, { nullable: true })
+    async userGetPremiumSubscriptionPricing(): Promise<UserSubscriptionPricing | null> {
+        const res = await subscription_get_premium_pricing();
+        if (res?.price === undefined)
+            return null;
+
+        return {
+            price: res?.price,
+            discount_perc: res?.discount_perc
+        }
     }
 }

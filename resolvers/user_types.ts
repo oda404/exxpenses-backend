@@ -59,3 +59,12 @@ export class UserSubscriptionInfo {
     @Field()
     cancel_at_end: boolean;
 }
+
+@ObjectType()
+export class UserSubscriptionPricing {
+    @Field()
+    price: number;
+
+    @Field({ nullable: true })
+    discount_perc?: number;
+}

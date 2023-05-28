@@ -24,7 +24,7 @@ import { Server as HTTPSServer } from "https";
 import { noReplyMailer } from "./mailer";
 import { closeRedisConnection, initRedisConnection } from "./redis";
 import { Container } from "typedi";
-import payment_create_route, { payment_webhook } from "../payment/routes";
+import payment_create_route, { payment_webhook, subscriptions_subsystem_routes_init } from "../payment/routes";
 import { subscriptions_subsystem_init } from "../payment/handle_subscription";
 var body = require("body-parser")
 
@@ -130,6 +130,7 @@ async function main() {
     /* Initialize connection to Redis server */
     await initRedisConnection();
 
+    await subscriptions_subsystem_routes_init();
     await subscriptions_subsystem_init();
     const server = await new_http_server();
 

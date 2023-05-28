@@ -1,9 +1,10 @@
 
-import { Entity, Column, PrimaryGeneratedColumn, OneToMany, CreateDateColumn } from "typeorm";
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany, CreateDateColumn, OneToOne, JoinColumn } from "typeorm";
 import { Category } from "./category";
 import { ObjectType, Field, ID } from "type-graphql";
 import { CURRENCY_LENGTH, USERNAME_LENGTH } from "./types";
 import { PLAN_FREE, PlanType } from "../utils/plan";
+import { StripeUser } from "./stripe_user";
 
 @ObjectType({ description: "The user model" })
 @Entity({ name: "users" })
@@ -40,9 +41,6 @@ export class User {
     @Column({ default: PLAN_FREE })
     plan: PlanType;
 
-    @Column({ default: null, nullable: true })
-    stripe_subid: string;
-
     @Column()
     hash: string;
 
@@ -53,6 +51,13 @@ export class User {
     @Field(type => [Category])
     @OneToMany(() => Category, (category) => category.user)
     categories: Category[];
+
+    @OneToOne(() => StripeUser, { nullable: true, cascade: true })
+    @JoinColumn()
+    stripe_user: StripeUser | null;
+
+    @Column({ nullable: true, default: null })
+    referral_code?: string;
 
     categoryCount?: number;
 }

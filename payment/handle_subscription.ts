@@ -4,30 +4,33 @@ import { User } from "../models/user";
 import { PlanType } from "../utils/plan";
 import { stripe } from "./routes";
 import { UserSubscriptionPricing } from "../resolvers/user_types";
+import { StripeUser } from "../models/stripe_user";
 
 const premium_id = process.env.STRIPE_PREMIUM_ID!;
 
 let userRepo: Repository<User>;
-
+let stripeUserRepo: Repository<StripeUser>;
 export async function subscriptions_subsystem_init() {
     userRepo = Container.get<Repository<User>>("psqlUserRepo");
+    stripeUserRepo = Container.get<Repository<StripeUser>>("psqlStripeUserRepo");
 }
 
 export async function handle_subscription_set_to(email: string, value: number, sub_id: string) {
 
     try {
-        const user = await userRepo.findOneBy({ email: email });
-        if (user === null)
+        const user = await userRepo.findOne({ where: { email: email }, relations: ["stripe_user"] });
+        if (user === null || user.stripe_user === null)
             return;
 
         // probably an old subscription talking mad shit
-        if (user.stripe_subid !== null && user.stripe_subid !== sub_id && value <= user.plan)
+        if (user.stripe_user.stripe_subid !== null && user.stripe_user.stripe_subid !== sub_id && value <= user.plan)
             return null;
 
-        await userRepo.update({ email: email }, { plan: value as PlanType, stripe_subid: sub_id });
+        await stripeUserRepo.update({ id: user.stripe_user.id }, { stripe_subid: sub_id });
+        await userRepo.update({ email: email }, { plan: value as PlanType });
     }
     catch (e) {
-
+        return;
     }
 }
 

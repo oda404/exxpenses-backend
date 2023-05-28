@@ -4,6 +4,7 @@ import { User } from "../models/user";
 import { Category } from "../models/category";
 import { Expense } from "../models/expense";
 import { Container } from "typedi";
+import { StripeUser } from "../models/stripe_user";
 
 const env = process.env.ENV!;
 const psql_host = process.env.PSQL_HOST!;
@@ -27,7 +28,7 @@ export async function initPSQLConnection() {
         synchronize: env === "dev",
         logging: env === "dev",
 
-        entities: [User, Category, Expense]
+        entities: [User, Category, Expense, StripeUser]
     });
 
     console.log(`psql: Connecting to ${psql_host}:${psql_port}`);
@@ -40,6 +41,7 @@ export async function initPSQLConnection() {
     Container.set('psqlUserRepo', dataSource.getRepository(User));
     Container.set('psqlCategoryRepo', dataSource.getRepository(Category));
     Container.set('psqlExpenseRepo', dataSource.getRepository(Expense));
+    Container.set("psqlStripeUserRepo", dataSource.getRepository(StripeUser));
 }
 
 export async function closePSQLConnection() {
@@ -53,4 +55,5 @@ export async function closePSQLConnection() {
     Container.remove('psqlUserRepo');
     Container.remove('psqlCategoryRepo');
     Container.remove('psqlExpenseRepo');
+    Container.remove("psqlStripeUserRepo");
 }

@@ -1,6 +1,10 @@
 import { NextFunction, Request, Response } from "express";
 import Stripe from "stripe";
 import { handle_subscription_set_to } from "./handle_subscription";
+import Container from "typedi";
+import { Repository } from "typeorm";
+import { User } from "../models/user";
+import { StripeUser } from "../models/stripe_user";
 
 const stripe_whsec = process.env.STRIPE_WHSEC!;
 const stripe_pk = process.env.STRIPE_PK!;
@@ -14,9 +18,12 @@ const stripe_price_map = stripe_prices.split(',').map(price => {
     return { stripe_id: obj[0], internal_id: Number(obj[1]) };
 });
 
-console.log(stripe_whsec);
-console.log(stripe_pk);
-console.log(stripe_price_map);
+let userRepo: Repository<User>;
+let stripeUserRepo: Repository<StripeUser>;
+export async function subscriptions_subsystem_routes_init() {
+    userRepo = Container.get<Repository<User>>("psqlUserRepo");
+    stripeUserRepo = Container.get<Repository<StripeUser>>("psqlStripeUserRepo");
+}
 
 // const subscription = await stripe.subscriptions.cancel('sub_49ty4767H20z6a');
 
@@ -27,12 +34,30 @@ export default async function payment_create_route(req: Request, res: Response, 
         return;
 
     try {
-        const customer = await stripe.customers.create({
-            email: email,
-        });
+        const user = await userRepo.findOne({ where: { email: email }, relations: ["stripe_user"] });
+        if (user === null)
+            return;
+
+        let customer_id;
+        if (user.stripe_user === null) {
+            const customer = await stripe.customers.create({
+                email: email,
+            });
+            let stripe_user: Partial<StripeUser> = {
+                stripe_cusid: customer.id
+            };
+
+            user.stripe_user = await stripeUserRepo.save(stripe_user);
+            await userRepo.update({ email: user.email }, { stripe_user: user.stripe_user });
+
+            customer_id = stripe_user.stripe_cusid!;
+        }
+        else {
+            customer_id = user.stripe_user.stripe_cusid;
+        }
 
         let p = await stripe.subscriptions.create({
-            customer: customer.id,
+            customer: customer_id,
             items: [{
                 price: price_id
             }],

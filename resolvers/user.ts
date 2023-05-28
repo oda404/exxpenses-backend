@@ -352,16 +352,20 @@ export class UserResolver {
         if (req.session.userId === undefined)
             return false;
 
-        const user = await this.userRepo.findOneBy({ id: req.session.userId });
+        const user = await this.userRepo.findOne({
+            where: { id: req.session.userId },
+            relations: ["stripe_user"]
+        });
+
         if (user === null) {
             clear_user_session(req, res);
             return false;
         }
 
-        if (user.plan === 0 || user.stripe_subid === null)
+        if (user.plan === 0 || user.stripe_user === null || user.stripe_user.stripe_subid === null)
             return false;
 
-        await subscription_unsubscribe_delayed(user.stripe_subid);
+        await subscription_unsubscribe_delayed(user.stripe_user.stripe_subid);
         return true;
     }
 
@@ -398,16 +402,19 @@ export class UserResolver {
         if (req.session.userId === undefined)
             return null;
 
-        const user = await this.userRepo.findOneBy({ id: req.session.userId });
+        const user = await this.userRepo.findOne({
+            where: { id: req.session.userId },
+            relations: ["stripe_user"]
+        });
         if (user === null) {
             clear_user_session(req, res);
             return null;
         }
 
-        if (user.plan === 0 || user.stripe_subid === null)
+        if (user.plan === 0 || user.stripe_user === null || user.stripe_user.stripe_subid === null)
             return null;
 
-        let response = await subscription_get_info(user.stripe_subid);
+        let response = await subscription_get_info(user.stripe_user.stripe_subid);
         if (response.price === undefined || response.since === undefined || response.until === undefined)
             return null
 

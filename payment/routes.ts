@@ -109,6 +109,13 @@ export async function payment_webhook(req: Request, res: Response, next: NextFun
                     break;
             }
         }
+        else if (event.type === "customer.subscription.deleted") {
+            let sub = event.data.object as any;
+            const sub_id = sub.id;
+            const customer = await stripe.customers.retrieve((event.data.object as any).customer) as any;
+            const customer_email = customer.email;
+            handle_subscription_set_to(customer_email, 0, sub_id);
+        }
         else if (event.type === 'invoice.upcoming') {
 
         }

@@ -75,6 +75,7 @@ export class UserResolver {
         firstname = firstname.trim();
         lastname = lastname.trim();
         email = email.trim();
+	email = email.toLowerCase();
 
         if (!isNameValid(firstname))
             return { error: { name: "Firstname can't be longer than 30 characters!", field: "firstname" } };
@@ -115,6 +116,7 @@ export class UserResolver {
     ): Promise<UserResponse> {
 
         email = email.trim();
+	email = email.toLowerCase();
 
         const genericError = { error: { name: "Incorrect email or password!" } };
 
@@ -234,6 +236,7 @@ export class UserResolver {
         @Arg("token") token: string
     ) {
         email = email.trim();
+	email = email.toLowerCase();
 
         /* This function always returns true */
         if (!(await turnstile_verify_managed(token, req.headers)))
